@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="advanced.css" />
   <link rel="stylesheet" href="dependencies.css" />
   <link rel="stylesheet" href="bookmarks.css" />
+  <link rel="stylesheet" href="compare.css" />
   <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
 </head>
 <body>
@@ -28,6 +29,7 @@
         <button class="nav-item" data-view="security"><span>♢</span>安全角色</button>
         <button class="nav-item" data-view="bookmarks"><span>◆</span>书签</button>
         <button class="nav-item" data-view="layout"><span>▣</span>页面布局</button>
+        <button class="nav-item" data-view="compare"><span>⇄</span>版本比较</button>
         <button class="nav-item" data-view="quality"><span>◇</span>质量检查</button>
       </nav>
       <div class="sidebar-footer">
@@ -118,6 +120,14 @@
         <div class="panel visual-table-panel"><div class="panel-title"><div><p class="eyebrow">VISUAL INVENTORY</p><h2>本页视觉对象</h2></div></div><div class="table-scroll"><table><thead><tr><th>对象</th><th>类型</th><th>位置</th><th>尺寸</th><th>层级</th><th>字段</th></tr></thead><tbody id="visualTable"></tbody></table></div></div>
       </section>
 
+      <section id="compare" class="view">
+        <div class="section-head"><div><p class="eyebrow">PROJECT DIFF</p><h1>版本比较</h1><p class="muted">比较两个 PBIP 项目目录，识别模型、DAX、安全、页面、视觉对象与书签变更。</p></div></div>
+        <div class="compare-form panel"><label>基线项目<input id="compareBaseline" placeholder="旧版本或 Git 工作树目录" /></label><label>当前项目<input id="compareCurrent" placeholder="新版本项目目录" /></label><button id="compareButton" class="button primary">开始比较</button></div>
+        <div id="compareStats" class="mini-stats"></div>
+        <div class="compare-toolbar"><label class="search-box">⌕<input id="compareSearch" placeholder="搜索对象类型或名称" /></label><div id="compareFilters" class="filter-pills"><button data-change="all" class="active">全部</button><button data-change="added">新增</button><button data-change="removed">删除</button><button data-change="modified">修改</button></div></div>
+        <div id="compareResult" class="compare-result"></div>
+      </section>
+
       <section id="quality" class="view">
         <div class="section-head"><div><p class="eyebrow">BEST PRACTICES</p><h1>质量检查</h1><p class="muted">针对模型可维护性与页面布局执行轻量规则检查。</p></div><div id="qualityFilters" class="filter-pills"><button data-severity="all" class="active">全部</button><button data-severity="error">错误</button><button data-severity="warning">警告</button><button data-severity="info">建议</button></div></div>
         <div id="issueList" class="issue-list"></div>
@@ -126,6 +136,7 @@
   </div>
   <script src="dependencies.js"></script>
   <script src="bookmarks.js"></script>
+  <script src="compare.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

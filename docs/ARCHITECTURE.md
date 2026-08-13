@@ -24,6 +24,8 @@ PowerBiProjectParser
 - `Services/PowerBiProjectParser.cs`：PBIP/PBIR/TMDL/model.bim 解析器。
 - `Services/ProjectSnapshotCache.cs`：为 Power Query 多实体刷新复用项目快照。
 - `Services/PowerQueryExportService.cs`：将嵌套快照映射为固定列的扁平实体。
+- `Services/SnapshotComparisonService.cs`：按稳定对象键比较两个项目快照。
+- `Services/ProjectPathPolicy.cs`：限制允许读取的项目根目录。
 - `Models/ProjectSnapshot.cs`：统一的模型、报表、书签和质量检查数据结构。
 - `wwwroot/`：单页管理界面、依赖图、书签管理器和布局画布。
 - `docs/`：使用与架构文档。
@@ -68,3 +70,23 @@ PowerBiProjectParser
 ## Power Query API
 
 `GET /api/powerquery/{entity}` 接收项目路径并返回 `columns` 与 `rows`。列定义独立于数据行，即使实体为空也能保持稳定结构。同一规范化项目路径的快照缓存 10 分钟；`refresh=true` 可强制重新扫描。
+
+首次并发请求通过 `Lazy<Task<ProjectSnapshot>>` 合并为一次扫描。缓存同时记录项目文件数量和最新修改时间，检测到磁盘变化会自动重新解析。
+
+## 目录白名单
+
+`appsettings.json` 中 `ProjectAccess:AllowedRoots` 为空时保持本机开发兼容；部署到网关或局域网时应配置允许读取的根目录：
+
+```json
+{
+  "ProjectAccess": {
+    "AllowedRoots": ["D:\\PowerBIProjects"]
+  }
+}
+```
+
+项目路径必须等于白名单根目录或位于其子目录中，越界请求返回 HTTP 403。
+
+## 版本比较
+
+`POST /api/project/compare` 并发解析基线和当前项目，按表、字段、度量值、关系、计算组/项、角色、依赖、页面、视觉对象和书签的稳定键比较。对象内容经过 SHA-256 摘要识别修改，接口只返回变更清单，不写入任何项目。

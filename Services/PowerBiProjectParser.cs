@@ -771,12 +771,18 @@ public sealed class PowerBiProjectParser
                 var a = page.Visuals[i]; var b = page.Visuals[j];
                 var overlap = Math.Max(0, Math.Min(a.X + a.Width, b.X + b.Width) - Math.Max(a.X, b.X)) * Math.Max(0, Math.Min(a.Y + a.Height, b.Y + b.Height) - Math.Max(a.Y, b.Y));
                 var minArea = Math.Min(a.Width * a.Height, b.Width * b.Height);
-                if (minArea > 0 && overlap / minArea > .65 && a.Type != "shape" && b.Type != "shape")
-                    issues.Add(new QualityIssue("REPORT-OVERLAP", "warning", "Report", "视觉对象大面积重叠", $"“{a.Title}”与“{b.Title}”重叠超过较小对象的 65%。", $"{a.Title} / {b.Title}", page.Name));
+                var exactStack = Math.Abs(a.X - b.X) < 1 && Math.Abs(a.Y - b.Y) < 1 && Math.Abs(a.Width - b.Width) < 1 && Math.Abs(a.Height - b.Height) < 1;
+                var decorative = IsDecorativeVisual(a) || IsDecorativeVisual(b);
+                var likelyBookmarkLayer = exactStack && (a.IsHidden || b.IsHidden);
+                if (minArea > 0 && overlap / minArea > .80 && !decorative && !likelyBookmarkLayer)
+                    issues.Add(new QualityIssue("REPORT-OVERLAP", "warning", "Report", "视觉对象大面积重叠", $"“{a.Title}”与“{b.Title}”重叠超过较小对象的 80%。", $"{a.Title} / {b.Title}", page.Name));
             }
         }
         return issues;
     }
+
+    private static bool IsDecorativeVisual(ReportVisual visual) => visual.Type is
+        "shape" or "image" or "textbox" or "actionButton" or "pageNavigator" or "bookmarkNavigator";
 
     private static List<ModelDependency> BuildDependencies(IReadOnlyList<ModelTable> tables, IReadOnlyList<CalculationGroup> calculationGroups)
     {

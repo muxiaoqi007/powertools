@@ -4,8 +4,8 @@ public sealed class PowerQueryExportService
 {
     private static readonly IReadOnlyDictionary<string, EntityDefinition> Definitions = BuildDefinitions();
 
-    public IReadOnlyList<object> GetCatalog() => Definitions.Values
-        .Select(definition => (object)new { definition.Name, definition.Description, definition.Columns })
+    public IReadOnlyList<PowerQueryEntityCatalogItem> GetCatalog() => Definitions.Values
+        .Select(definition => new PowerQueryEntityCatalogItem(definition.Name, definition.Description, definition.Columns))
         .ToList();
 
     public PowerQueryExport Export(ProjectSnapshot snapshot, string entity)
@@ -81,3 +81,4 @@ public sealed record PowerQueryExport(
     DateTimeOffset ScannedAt,
     IReadOnlyList<string> Columns,
     IReadOnlyList<IReadOnlyDictionary<string, object?>> Rows);
+public sealed record PowerQueryEntityCatalogItem(string Name, string Description, IReadOnlyList<string> Columns);

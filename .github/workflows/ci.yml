@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore PowerTools.sln
+      - name: Build
+        run: dotnet build PowerTools.sln -c Release --no-restore
+      - name: Test
+        run: dotnet test PowerTools.sln -c Release --no-build --verbosity normal
+      - name: Check JavaScript
+        run: |
+          node --check wwwroot/app.js
+          node --check wwwroot/dependencies.js
+          node --check wwwroot/bookmarks.js

@@ -61,6 +61,17 @@ dotnet run --project .\PowerTools.csproj
 
 输入基线项目和当前项目目录，工具会显示新增、删除和修改对象。可以按变更类型筛选或搜索对象名称。比较只生成内存报告，不会改动项目文件。
 
+### 模型优化
+
+“删除候选”会综合 DAX 依赖、视觉对象字段、关系、层次结构、RLS 和 OLS 生成证据：
+
+- `阻断`：检测到项目内引用，不应删除。
+- `项目内候选`：当前 PBIP 项目内未检测到引用，但仍必须人工确认外部报表、Excel/XMLA 客户端、动态字符串、SortByColumn 和源查询。
+
+PowerTools 不会执行删除。建议先在 Git 分支中手动修改 TMDL，再通过版本比较和 Power BI Desktop 验证。
+
+“度量优化”执行静态 DAX 检查，包括变量复用、除法、CALCULATE/FILTER、COUNTROWS、SELECTEDVALUE、嵌套迭代器、重复度量引用、SWITCH 分支和引用规范。静态检查不等同于 Server Timings；对性能规则应在 DAX Studio 或 Performance Analyzer 中验证。
+
 ## 常见问题
 
 ### 为什么不能直接打开 PBIX？

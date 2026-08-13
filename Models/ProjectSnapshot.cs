@@ -16,6 +16,9 @@ public sealed record ProjectSnapshot(
     IReadOnlyList<QualityIssue> Issues,
     IReadOnlyList<string> Warnings)
 {
+    public IReadOnlyList<RemovalCandidate> RemovalCandidates { get; init; } = Array.Empty<RemovalCandidate>();
+    public IReadOnlyList<MeasureOptimizationSuggestion> OptimizationSuggestions { get; init; } = Array.Empty<MeasureOptimizationSuggestion>();
+
     public object Summary => new
     {
         tableCount = Tables.Count,
@@ -34,6 +37,29 @@ public sealed record ProjectSnapshot(
         issueCount = Issues.Count
     };
 }
+
+public sealed record RemovalCandidate(
+    string ObjectType,
+    string TableName,
+    string ObjectName,
+    string Status,
+    string Confidence,
+    int RiskScore,
+    IReadOnlyList<string> Reasons,
+    IReadOnlyList<string> Evidence);
+
+public sealed record MeasureOptimizationSuggestion(
+    string RuleId,
+    string Category,
+    string Severity,
+    int Priority,
+    string TableName,
+    string MeasureName,
+    string Title,
+    string Detail,
+    string Recommendation,
+    string SourceName,
+    string SourceUrl);
 
 public sealed record ModelTable(
     string Name,

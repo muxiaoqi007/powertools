@@ -70,6 +70,31 @@ public sealed class PowerToolsTests : IDisposable
         Assert.Single(result.Pages[0].Visuals);
     }
 
+    [Fact]
+    public void Optimizer_blocks_referenced_objects_and_marks_unreferenced_as_candidates()
+    {
+        var snapshot = SampleProject.Create();
+        var result = ModelOptimizationAnalyzer.Analyze(snapshot);
+        Assert.Contains(result.RemovalCandidates, x => x.ObjectType == "measure" && x.ObjectName == "Revenue" && x.Status == "blocked");
+        Assert.Contains(result.RemovalCandidates, x => x.ObjectType == "column" && x.ObjectName == "Product Key" && x.Status == "blocked");
+        Assert.Contains(result.RemovalCandidates, x => x.ObjectType == "column" && x.ObjectName == "Region" && x.Status == "blocked");
+    }
+
+    [Fact]
+    public void Optimizer_detects_public_dax_best_practices()
+    {
+        var baseline = SampleProject.Create();
+        var measures = new[]
+        {
+            new ModelMeasure("Unsafe Ratio", "IF([Revenue] = 0, BLANK(), [Orders] / [Revenue])", null, false, null, null),
+            new ModelMeasure("Filtered", "CALCULATE([Revenue], FILTER(Sales, Sales[Quantity] > 0))", null, false, null, null)
+        };
+        var snapshot = baseline with { Tables = baseline.Tables.Select(t => t.Name == "Sales" ? t with { Measures = measures } : t).ToList() };
+        var result = ModelOptimizationAnalyzer.Analyze(snapshot);
+        Assert.Contains(result.Suggestions, x => x.RuleId == "DAX-002" && x.MeasureName == "Unsafe Ratio");
+        Assert.Contains(result.Suggestions, x => x.RuleId == "DAX-003" && x.MeasureName == "Filtered");
+    }
+
     private string CreateMinimalProject()
     {
         var tableRoot = Path.Combine(_root, "Retail.SemanticModel", "definition", "tables");

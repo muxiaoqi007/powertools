@@ -20,7 +20,7 @@ var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok", version = "0.4.0" }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok", version = "0.5.0" }));
 app.MapGet("/api/sample", () => Results.Ok(SampleProject.Create()));
 app.MapGet("/api/powerquery/entities", (PowerQueryExportService exporter) => Results.Ok(exporter.GetCatalog()));
 app.MapGet("/api/powerquery/{entity}", async (string entity, string? path, bool? refresh, ProjectSnapshotCache cache, ProjectPathPolicy paths, PowerQueryExportService exporter, CancellationToken cancellationToken) =>

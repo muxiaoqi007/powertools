@@ -1,3 +1,5 @@
+using PowerTools.Services;
+
 namespace PowerTools;
 
 public static class SampleProject
@@ -112,6 +114,8 @@ public static class SampleProject
                 }, 0, 1, true, "sample")
         };
         var bookmarkGroups = new[] { new BookmarkGroup("sample-group", "演示书签", new[] { "sample-overview" }, 0) };
-        return new ProjectSnapshot("零售经营分析（示例）", "内置演示数据", "PBIP / PBIR", DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, new[] { overview, detail }, issues, Array.Empty<string>());
+        var snapshot = new ProjectSnapshot("零售经营分析（示例）", "内置演示数据", "PBIP / PBIR", DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, new[] { overview, detail }, issues, Array.Empty<string>());
+        var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
+        return snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
     }
 }

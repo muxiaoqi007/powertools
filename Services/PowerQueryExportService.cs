@@ -44,6 +44,8 @@ public sealed class PowerQueryExportService
             Def("bookmark-targets", "书签目标视觉对象", C("bookmarkName", "visualName", "ordinal"), s => s.Bookmarks.SelectMany(b => b.TargetVisualNames.Select((visual, ordinal) => Row(("bookmarkName", b.Name), ("visualName", visual), ("ordinal", ordinal))))),
             Def("bookmark-states", "书签视觉对象状态", C("bookmarkName", "pageName", "visualName", "isHidden", "visualType", "filterCount"), s => s.Bookmarks.SelectMany(b => b.VisualStates.Select(v => Row(("bookmarkName", b.Name), ("pageName", v.PageName), ("visualName", v.VisualName), ("isHidden", v.IsHidden), ("visualType", v.VisualType), ("filterCount", v.FilterCount))))),
             Def("issues", "质量检查问题", C("issueId", "severity", "category", "title", "detail", "objectName", "pageName"), s => s.Issues.Select(i => Row(("issueId", i.Id), ("severity", i.Severity), ("category", i.Category), ("title", i.Title), ("detail", i.Detail), ("objectName", i.ObjectName), ("pageName", i.PageName)))),
+            Def("removal-candidates", "字段与度量删除候选", C("objectType", "tableName", "objectName", "status", "confidence", "riskScore", "reasons", "evidence"), s => s.RemovalCandidates.Select(x => Row(("objectType", x.ObjectType), ("tableName", x.TableName), ("objectName", x.ObjectName), ("status", x.Status), ("confidence", x.Confidence), ("riskScore", x.RiskScore), ("reasons", string.Join(" | ", x.Reasons)), ("evidence", string.Join(" | ", x.Evidence))))),
+            Def("measure-optimizations", "度量值优化建议", C("ruleId", "category", "severity", "priority", "tableName", "measureName", "title", "detail", "recommendation", "sourceName", "sourceUrl"), s => s.OptimizationSuggestions.Select(x => Row(("ruleId", x.RuleId), ("category", x.Category), ("severity", x.Severity), ("priority", x.Priority), ("tableName", x.TableName), ("measureName", x.MeasureName), ("title", x.Title), ("detail", x.Detail), ("recommendation", x.Recommendation), ("sourceName", x.SourceName), ("sourceUrl", x.SourceUrl)))),
             Def("warnings", "解析提示", C("warning", "ordinal"), s => s.Warnings.Select((warning, ordinal) => Row(("warning", warning), ("ordinal", ordinal))))
         };
         return definitions.ToDictionary(definition => definition.Name, StringComparer.OrdinalIgnoreCase);
@@ -63,6 +65,8 @@ public sealed class PowerQueryExportService
         yield return Row(("metric", "visualCount"), ("value", s.Pages.Sum(p => p.Visuals.Count)));
         yield return Row(("metric", "bookmarkCount"), ("value", s.Bookmarks.Count));
         yield return Row(("metric", "issueCount"), ("value", s.Issues.Count));
+        yield return Row(("metric", "removalCandidateCount"), ("value", s.RemovalCandidates.Count(x => x.Status == "candidate")));
+        yield return Row(("metric", "optimizationSuggestionCount"), ("value", s.OptimizationSuggestions.Count));
     }
 
     private static EntityDefinition Def(string name, string description, IReadOnlyList<string> columns, Func<ProjectSnapshot, IEnumerable<IReadOnlyDictionary<string, object?>>> rows)

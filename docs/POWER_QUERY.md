@@ -115,6 +115,8 @@ PowerToolsEntity(PowerToolsUrl, PowerBiProjectPath, "bookmark-states")
 | `bookmark-targets` | 书签目标视觉对象 |
 | `bookmark-states` | 书签视觉对象状态 |
 | `issues` | 质量检查问题 |
+| `removal-candidates` | 字段与度量值删除候选和引用证据 |
+| `measure-optimizations` | 度量值静态优化建议 |
 | `warnings` | 解析提示 |
 
 也可以访问以下地址查看实时实体目录和列名：

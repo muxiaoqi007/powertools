@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="dependencies.css" />
   <link rel="stylesheet" href="bookmarks.css" />
   <link rel="stylesheet" href="compare.css" />
+  <link rel="stylesheet" href="optimizer.css" />
   <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
 </head>
 <body>
@@ -24,6 +25,7 @@
           <button class="nav-item nav-child" data-view="dax"><span>ƒ</span>度量值</button>
           <button class="nav-item nav-child" data-view="calcgroups"><span>∑</span>计算组</button>
           <button class="nav-item nav-child" data-view="dependencies"><span>⌁</span>模型依赖</button>
+          <button class="nav-item nav-child" data-view="optimizer"><span>◇</span>模型优化</button>
         </div>
         <button class="nav-item" data-view="relationships"><span>⌘</span>关系</button>
         <button class="nav-item" data-view="security"><span>♢</span>安全角色</button>
@@ -67,6 +69,15 @@
       <section id="model" class="view">
         <div class="section-head"><div><p class="eyebrow">SEMANTIC MODEL</p><h1>模型资源管理器</h1><p class="muted">查看表、列、度量值、层次结构与分区定义。</p></div><label class="search-box">⌕<input id="modelSearch" placeholder="搜索表、字段或度量值" /></label></div>
         <div class="model-layout"><div id="tableList" class="table-list"></div><div id="tableDetail" class="panel table-detail"></div></div>
+      </section>
+
+      <section id="optimizer" class="view">
+        <div class="section-head optimizer-head"><div><p class="eyebrow">MODEL OPTIMIZER</p><h1>模型质量与优化</h1><p class="muted">基于当前项目内的依赖、报表、关系与安全元数据生成删除候选和 DAX 静态优化建议。</p></div><label class="search-box">⌕<input id="optimizerSearch" placeholder="搜索表、字段、度量值或规则" /></label></div>
+        <div id="optimizerStats" class="mini-stats"></div>
+        <div class="optimizer-notice">只提供分析建议，不会直接删除或修改模型。标记为候选仅表示当前项目内未检测到引用；删除前仍需检查外部报表、Excel/XMLA、动态引用和刷新流程。</div>
+        <div class="optimizer-tabs"><button data-optimizer-tab="removal" class="active">删除候选</button><button data-optimizer-tab="dax">度量优化</button></div>
+        <div id="optimizerFilters" class="filter-pills optimizer-filters"></div>
+        <div id="optimizerList" class="optimizer-list"></div>
       </section>
 
       <section id="relationships" class="view">
@@ -137,6 +148,7 @@
   <script src="dependencies.js"></script>
   <script src="bookmarks.js"></script>
   <script src="compare.js"></script>
+  <script src="optimizer.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

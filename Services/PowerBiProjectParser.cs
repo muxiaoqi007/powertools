@@ -32,7 +32,9 @@ public sealed class PowerBiProjectParser
         var name = ResolveProjectName(path, reportRoot, modelRoot);
         var format = DetectFormat(reportRoot, modelRoot);
         var issues = AnalyzeQuality(tables, relationships, calculationGroups, roles, pages);
-        return new ProjectSnapshot(name, path, format, DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, pages, issues, warnings);
+        var snapshot = new ProjectSnapshot(name, path, format, DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, pages, issues, warnings);
+        var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
+        return snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
     }
 
     private static string? FindComponentRoot(string root, string suffix)
@@ -798,6 +800,10 @@ public sealed class PowerBiProjectParser
         foreach (var table in tables)
         foreach (var measure in table.Measures)
             AddExpressionDependencies($"measure:{table.Name}:{measure.Name}", $"{table.Name}[{measure.Name}]", "measure", table.Name, measure.Expression);
+
+        foreach (var table in tables)
+        foreach (var column in table.Columns.Where(column => column.IsCalculated && !string.IsNullOrWhiteSpace(column.Expression)))
+            AddExpressionDependencies($"column:{table.Name}:{column.Name}", $"{table.Name}[{column.Name}]", "column", table.Name, column.Expression!);
 
         foreach (var group in calculationGroups)
         foreach (var item in group.Items)

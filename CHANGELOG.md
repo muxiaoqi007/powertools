@@ -7,6 +7,7 @@
 - 删除候选纳入 SortByColumn、键字段、实时模型证据和估算回收空间。
 - 新增 Power BI 外部工具注册/卸载脚本，并限制实时连接只能指向本机。
 - Power Query 新增 `storage-metrics` 实体并扩充字段/删除候选列。
+- 根据真实 Power BI Desktop DMV 修正物理层次结构重复行，并通过 TMSCHEMA 统计映射准确的字段行数与基数。
 
 ## 0.6.0 - 2026-08-13
 

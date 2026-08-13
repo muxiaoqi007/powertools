@@ -112,7 +112,10 @@ public sealed class LivePowerBiModelService
             var columns = Query(connection, "SELECT * FROM $SYSTEM.DISCOVER_STORAGE_TABLE_COLUMNS", cancellationToken);
             var segments = Query(connection, "SELECT * FROM $SYSTEM.DISCOVER_STORAGE_TABLE_COLUMN_SEGMENTS", cancellationToken);
             var tables = Query(connection, "SELECT * FROM $SYSTEM.DISCOVER_STORAGE_TABLES", cancellationToken);
-            return BuildStorageMetrics(columns, segments, tables);
+            var schemaTables = Query(connection, "SELECT * FROM $SYSTEM.TMSCHEMA_TABLES", cancellationToken);
+            var schemaColumns = Query(connection, "SELECT * FROM $SYSTEM.TMSCHEMA_COLUMNS", cancellationToken);
+            var columnStorages = Query(connection, "SELECT * FROM $SYSTEM.TMSCHEMA_COLUMN_STORAGES", cancellationToken);
+            return BuildStorageMetrics(columns, segments, tables, schemaTables, schemaColumns, columnStorages);
         }
         catch (Exception ex)
         {
@@ -142,7 +145,10 @@ public sealed class LivePowerBiModelService
     public static IReadOnlyList<ModelStorageMetric> BuildStorageMetrics(
         IReadOnlyList<Dictionary<string, object?>> columns,
         IReadOnlyList<Dictionary<string, object?>> segments,
-        IReadOnlyList<Dictionary<string, object?>> tables)
+        IReadOnlyList<Dictionary<string, object?>> tables,
+        IReadOnlyList<Dictionary<string, object?>>? schemaTables = null,
+        IReadOnlyList<Dictionary<string, object?>>? schemaColumns = null,
+        IReadOnlyList<Dictionary<string, object?>>? columnStorages = null)
     {
         static string Text(IReadOnlyDictionary<string, object?> row, params string[] names) => names.Select(name => row.TryGetValue(name, out var value) ? value?.ToString() : null).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "";
         static long? Number(IReadOnlyDictionary<string, object?> row, params string[] names)
@@ -157,11 +163,29 @@ public sealed class LivePowerBiModelService
                 Rows = group.Sum(row => Number(row, "RECORDS_COUNT") ?? 0),
                 Count = group.Count()
             }, StringComparer.OrdinalIgnoreCase);
-        var tableRows = tables.GroupBy(row => Text(row, "TABLE_ID"), StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.Sum(row => Number(row, "RECORDS_COUNT") ?? 0), StringComparer.OrdinalIgnoreCase);
+        var tableNames = (schemaTables ?? Array.Empty<Dictionary<string, object?>>())
+            .Where(row => !string.IsNullOrWhiteSpace(Text(row, "ID")))
+            .ToDictionary(row => Text(row, "ID"), row => Text(row, "Name"), StringComparer.OrdinalIgnoreCase);
+        var storageStatistics = (columnStorages ?? Array.Empty<Dictionary<string, object?>>())
+            .Where(row => !string.IsNullOrWhiteSpace(Text(row, "ID")))
+            .ToDictionary(row => Text(row, "ID"), row => new
+            {
+                RowCount = Number(row, "Statistics_RowCount"),
+                Cardinality = Number(row, "Statistics_DistinctStates")
+            }, StringComparer.OrdinalIgnoreCase);
+        var logicalStatistics = new Dictionary<string, (long? RowCount, long? Cardinality)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var column in schemaColumns ?? Array.Empty<Dictionary<string, object?>>())
+        {
+            if (!tableNames.TryGetValue(Text(column, "TableID"), out var tableName)) continue;
+            if (!storageStatistics.TryGetValue(Text(column, "ColumnStorageID"), out var statistics)) continue;
+            var columnName = Text(column, "ExplicitName", "InferredName");
+            if (!string.IsNullOrWhiteSpace(columnName)) logicalStatistics[$"{tableName}\u001f{columnName}"] = (statistics.RowCount, statistics.Cardinality);
+        }
         var metrics = new List<ModelStorageMetric>();
         foreach (var column in columns)
         {
+            var columnType = Text(column, "COLUMN_TYPE");
+            if (!string.IsNullOrWhiteSpace(columnType) && !columnType.Equals("BASIC_DATA", StringComparison.OrdinalIgnoreCase)) continue;
             var tableId = Text(column, "TABLE_ID");
             var columnId = Text(column, "COLUMN_ID");
             var tableName = Text(column, "DIMENSION_NAME", "TABLE_NAME");
@@ -171,8 +195,8 @@ public sealed class LivePowerBiModelService
             var dictionary = Number(column, "DICTIONARY_SIZE") ?? 0;
             var hierarchy = Number(column, "HIERARCHY_SIZE") ?? 0;
             var data = segment?.Size ?? Number(column, "USED_SIZE", "DATA_SIZE") ?? 0;
-            var rows = tableRows.TryGetValue(tableId, out var tableRowCount) ? tableRowCount : segment?.Rows;
-            metrics.Add(new ModelStorageMetric(tableName, columnName, rows, Number(column, "COLUMN_CARDINALITY", "CARDINALITY"), data, dictionary, hierarchy, data + dictionary + hierarchy, segment?.Count ?? 0));
+            logicalStatistics.TryGetValue($"{tableName}\u001f{columnName}", out var statistics);
+            metrics.Add(new ModelStorageMetric(tableName, columnName, statistics.RowCount ?? segment?.Rows, statistics.Cardinality ?? Number(column, "COLUMN_CARDINALITY", "CARDINALITY"), data, dictionary, hierarchy, data + dictionary + hierarchy, segment?.Count ?? 0));
         }
         return metrics.OrderByDescending(metric => metric.TotalSizeBytes).ToList();
     }

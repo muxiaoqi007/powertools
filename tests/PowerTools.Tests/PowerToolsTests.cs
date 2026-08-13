@@ -13,15 +13,22 @@ public sealed class PowerToolsTests : IDisposable
     public void Storage_dmvs_are_combined_into_column_metrics()
     {
         static Dictionary<string, object?> Row(params (string Key, object? Value)[] values) => values.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
-        var columns = new[] { Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("DIMENSION_NAME", "Sales"), ("ATTRIBUTE_NAME", "Order Id"), ("DICTIONARY_SIZE", 120L), ("COLUMN_CARDINALITY", 800L)) };
+        var columns = new[]
+        {
+            Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("DIMENSION_NAME", "Sales"), ("ATTRIBUTE_NAME", "Order Id"), ("COLUMN_TYPE", "BASIC_DATA"), ("DICTIONARY_SIZE", 120L)),
+            Row(("TABLE_ID", "H$1"), ("COLUMN_ID", "POS_TO_ID"), ("DIMENSION_NAME", "Sales"), ("ATTRIBUTE_NAME", "Order Id"), ("COLUMN_TYPE", "HIERARCHY_POSITION_TO_DATAID"), ("DICTIONARY_SIZE", 0L))
+        };
         var segments = new[]
         {
             Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("USED_SIZE", 1000L), ("RECORDS_COUNT", 500L)),
             Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("USED_SIZE", 900L), ("RECORDS_COUNT", 500L))
         };
-        var tables = new[] { Row(("TABLE_ID", "1"), ("RECORDS_COUNT", 1000L)) };
+        var tables = Array.Empty<Dictionary<string, object?>>();
+        var schemaTables = new[] { Row(("ID", 10L), ("Name", "Sales")) };
+        var schemaColumns = new[] { Row(("ID", 20L), ("TableID", 10L), ("ExplicitName", "Order Id"), ("ColumnStorageID", 30L)) };
+        var columnStorages = new[] { Row(("ID", 30L), ("Statistics_RowCount", 1000L), ("Statistics_DistinctStates", 800L)) };
 
-        var metric = Assert.Single(LivePowerBiModelService.BuildStorageMetrics(columns, segments, tables));
+        var metric = Assert.Single(LivePowerBiModelService.BuildStorageMetrics(columns, segments, tables, schemaTables, schemaColumns, columnStorages));
         Assert.Equal("Sales", metric.TableName);
         Assert.Equal("Order Id", metric.ColumnName);
         Assert.Equal(1000, metric.RowCount);

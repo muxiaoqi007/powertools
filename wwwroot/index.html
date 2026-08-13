@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0a0c10" />
+  <title>PowerTools · Power BI 模型管理</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="advanced.css" />
+  <link rel="stylesheet" href="dependencies.css" />
+  <link rel="stylesheet" href="bookmarks.css" />
+  <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">P</span><div><b>PowerTools</b><small>POWER BI STUDIO</small></div></div>
+      <nav id="nav" aria-label="主导航">
+        <button class="nav-item active" data-view="overview"><span>⌂</span>概览</button>
+        <button class="nav-item nav-parent active" data-model-toggle="true" aria-expanded="true"><span>▦</span>模型<i>⌄</i></button>
+        <div class="nav-children open" id="modelNavChildren">
+          <button class="nav-item nav-child active" data-view="model"><span>▫</span>模型对象</button>
+          <button class="nav-item nav-child" data-view="dax"><span>ƒ</span>度量值</button>
+          <button class="nav-item nav-child" data-view="calcgroups"><span>∑</span>计算组</button>
+          <button class="nav-item nav-child" data-view="dependencies"><span>⌁</span>模型依赖</button>
+        </div>
+        <button class="nav-item" data-view="relationships"><span>⌘</span>关系</button>
+        <button class="nav-item" data-view="security"><span>♢</span>安全角色</button>
+        <button class="nav-item" data-view="bookmarks"><span>◆</span>书签</button>
+        <button class="nav-item" data-view="layout"><span>▣</span>页面布局</button>
+        <button class="nav-item" data-view="quality"><span>◇</span>质量检查</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="status-dot"><i></i><span>本地分析模式</span></div>
+        <small>数据不离开本机</small>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="crumb"><span id="projectName">未加载项目</span><small id="projectFormat">POWER BI PROJECT</small></div>
+        <div class="project-loader">
+          <input id="pathInput" aria-label="项目目录" placeholder="输入 .pbip 项目、.Report 或 .SemanticModel 目录" />
+          <button id="openButton" class="button secondary">打开目录</button>
+          <button id="sampleButton" class="button primary">加载示例</button>
+        </div>
+      </header>
+
+      <div id="toast" role="status" aria-live="polite"></div>
+
+      <section id="overview" class="view active">
+        <div class="hero-row">
+          <div><p class="eyebrow">PROJECT PULSE</p><h1>模型状态，一目了然</h1><p class="muted">集中查看语义模型、报表结构、布局与潜在风险。</p></div>
+          <div class="scan-meta"><span>最近扫描</span><b id="scanTime">—</b><small id="projectPath">—</small></div>
+        </div>
+        <div id="summaryCards" class="metric-grid"></div>
+        <div class="dashboard-grid">
+          <article class="panel model-health"><div class="panel-title"><div><p class="eyebrow">MODEL HEALTH</p><h2>模型健康度</h2></div><span id="healthBadge" class="badge good">良好</span></div><div class="health-content"><div id="healthRing" class="health-ring"><strong>—</strong><span>综合评分</span></div><div id="healthBreakdown" class="health-breakdown"></div></div></article>
+          <article class="panel"><div class="panel-title"><div><p class="eyebrow">REPORT PAGES</p><h2>页面与视觉对象</h2></div><button class="text-button" data-jump="layout">打开画布 →</button></div><div id="pageOverview" class="page-overview"></div></article>
+          <article class="panel wide"><div class="panel-title"><div><p class="eyebrow">MODEL INVENTORY</p><h2>对象分布</h2></div><button class="text-button" data-jump="model">浏览模型 →</button></div><div id="inventory" class="inventory"></div></article>
+          <article class="panel"><div class="panel-title"><div><p class="eyebrow">ATTENTION</p><h2>需要关注</h2></div><button class="text-button" data-jump="quality">全部问题 →</button></div><div id="attention" class="attention-list"></div></article>
+        </div>
+      </section>
+
+      <section id="model" class="view">
+        <div class="section-head"><div><p class="eyebrow">SEMANTIC MODEL</p><h1>模型资源管理器</h1><p class="muted">查看表、列、度量值、层次结构与分区定义。</p></div><label class="search-box">⌕<input id="modelSearch" placeholder="搜索表、字段或度量值" /></label></div>
+        <div class="model-layout"><div id="tableList" class="table-list"></div><div id="tableDetail" class="panel table-detail"></div></div>
+      </section>
+
+      <section id="relationships" class="view">
+        <div class="section-head"><div><p class="eyebrow">MODEL LINEAGE</p><h1>关系视图</h1><p class="muted">用清晰的字段映射检查方向、基数和活动状态。</p></div></div>
+        <div id="relationshipStats" class="mini-stats"></div>
+        <div id="relationshipList" class="relationship-list"></div>
+      </section>
+
+      <section id="dax" class="view">
+        <div class="section-head"><div><p class="eyebrow">DAX CATALOG</p><h1>度量值目录</h1><p class="muted">集中检查表达式、格式、显示文件夹、隐藏状态和对象依赖。</p></div><label class="search-box">⌕<input id="daxSearch" placeholder="搜索度量值或 DAX 表达式" /></label></div>
+        <div class="catalog-layout"><div id="measureList" class="catalog-list"></div><div id="measureDetail" class="panel code-detail"></div></div>
+      </section>
+
+      <section id="calcgroups" class="view">
+        <div class="section-head"><div><p class="eyebrow">CALCULATION GROUPS</p><h1>计算组</h1><p class="muted">查看优先级、计算项 DAX 和动态格式字符串。</p></div></div>
+        <div id="calcGroupStats" class="mini-stats"></div>
+        <div id="calcGroupList" class="calc-group-list"></div>
+      </section>
+
+      <section id="security" class="view">
+        <div class="section-head"><div><p class="eyebrow">MODEL SECURITY</p><h1>RLS / OLS 安全角色</h1><p class="muted">审查角色权限、表级筛选表达式和对象级权限。</p></div></div>
+        <div id="securityStats" class="mini-stats"></div>
+        <div id="roleList" class="role-list"></div>
+      </section>
+
+      <section id="dependencies" class="view">
+        <div class="section-head dependency-head"><div><p class="eyebrow">MODEL DEPENDENCIES</p><h1>模型依赖关系</h1><p class="muted">追踪度量值、字段和计算项的上下游依赖与变更影响范围。</p></div><div class="dependency-controls"><label class="search-box">⌕<input id="dependencySearch" placeholder="搜索度量值、字段或计算项" /></label><select id="dependencyDirection" aria-label="依赖方向"><option value="both">上下游</option><option value="upstream">上游依赖</option><option value="downstream">下游影响</option></select><select id="dependencyDepth" aria-label="展开层级"><option value="1">1 层</option><option value="2" selected>2 层</option><option value="3">3 层</option><option value="99">全部</option></select><button id="dependencyFit" class="button secondary">适合画布</button></div></div>
+        <div class="dependency-workbench">
+          <aside class="dependency-list-panel"><div class="dependency-list-title"><b>模型对象</b><span id="dependencyObjectCount">0</span></div><div id="dependencyObjectList" class="dependency-object-list"></div></aside>
+          <div class="dependency-graph-panel"><svg id="dependencyGraph" role="img" aria-label="模型依赖关系图"><defs><marker id="arrowDependency" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs><g id="dependencyViewport"><g id="dependencyEdges"></g><g id="dependencyNodes"></g></g></svg><div id="dependencyEmpty" class="dependency-empty"></div><div class="dependency-legend"><span><i class="legend-measure"></i>度量值</span><span><i class="legend-column"></i>字段</span><span><i class="legend-calc"></i>计算项</span><span>拖动画布 · 滚轮缩放 · 点击节点聚焦</span></div></div>
+          <aside id="dependencyInspector" class="dependency-inspector"></aside>
+        </div>
+      </section>
+
+      <section id="bookmarks" class="view">
+        <div class="section-head bookmark-head"><div><p class="eyebrow">REPORT BOOKMARKS</p><h1>书签管理器</h1><p class="muted">查看书签顺序与分组，审计页面、筛选器、目标视觉对象和显隐状态。</p></div><label class="search-box">⌕<input id="bookmarkSearch" placeholder="搜索书签、分组或页面" /></label></div>
+        <div id="bookmarkStats" class="mini-stats"></div>
+        <div class="bookmark-workbench">
+          <aside class="bookmark-tree-panel"><div class="bookmark-list-title"><b>书签结构</b><span id="bookmarkCount">0</span></div><div id="bookmarkTree" class="bookmark-tree"></div></aside>
+          <article id="bookmarkDetail" class="panel bookmark-detail"></article>
+          <aside id="bookmarkStatePanel" class="bookmark-state-panel"></aside>
+        </div>
+      </section>
+
+      <section id="layout" class="view">
+        <div class="section-head layout-head"><div><p class="eyebrow">REPORT CANVAS</p><h1>页面布局</h1><p class="muted">按 Power BI 原始坐标和比例还原视觉对象的位置、尺寸与层级。</p></div><div class="layout-controls"><label>页面 <select id="pageSelect"></select></label><label>书签 <select id="bookmarkSelect"><option value="">原始页面</option></select></label><label>缩放 <select id="zoomSelect"><option value="fit">适合窗口</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option></select></label><button id="toggleHidden" class="button secondary active">显示隐藏对象</button></div></div>
+        <div class="layout-workbench">
+          <div class="canvas-stage"><div id="canvasFrame" class="canvas-frame"><div id="reportCanvas" class="report-canvas"></div></div></div>
+          <aside id="visualInspector" class="visual-inspector"></aside>
+        </div>
+        <div class="panel visual-table-panel"><div class="panel-title"><div><p class="eyebrow">VISUAL INVENTORY</p><h2>本页视觉对象</h2></div></div><div class="table-scroll"><table><thead><tr><th>对象</th><th>类型</th><th>位置</th><th>尺寸</th><th>层级</th><th>字段</th></tr></thead><tbody id="visualTable"></tbody></table></div></div>
+      </section>
+
+      <section id="quality" class="view">
+        <div class="section-head"><div><p class="eyebrow">BEST PRACTICES</p><h1>质量检查</h1><p class="muted">针对模型可维护性与页面布局执行轻量规则检查。</p></div><div id="qualityFilters" class="filter-pills"><button data-severity="all" class="active">全部</button><button data-severity="error">错误</button><button data-severity="warning">警告</button><button data-severity="info">建议</button></div></div>
+        <div id="issueList" class="issue-list"></div>
+      </section>
+    </main>
+  </div>
+  <script src="dependencies.js"></script>
+  <script src="bookmarks.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

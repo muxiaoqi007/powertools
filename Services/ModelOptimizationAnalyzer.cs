@@ -47,16 +47,27 @@ public static partial class ModelOptimizationAnalyzer
                     r.ToTable.Equals(table.Name, StringComparison.OrdinalIgnoreCase) && r.ToColumn.Equals(column.Name, StringComparison.OrdinalIgnoreCase))
                     .Select(r => $"关系“{r.Name}”使用"));
                 evidence.AddRange(table.Hierarchies.Where(h => h.Levels.Any(level => level.Equals(column.Name, StringComparison.OrdinalIgnoreCase))).Select(h => $"层次结构“{h.Name}”使用"));
+                evidence.AddRange(table.Columns.Where(other => other.SortByColumn?.Equals(column.Name, StringComparison.OrdinalIgnoreCase) == true).Select(other => $"字段“{other.Name}”的排序依据"));
+                if (column.IsKey) evidence.Add("表的键字段");
                 evidence.AddRange(snapshot.Roles.SelectMany(role => role.TablePermissions.Where(p => p.Table.Equals(table.Name, StringComparison.OrdinalIgnoreCase) && ExpressionReferences(p.Expression, table.Name, column.Name)).Select(_ => $"RLS 角色“{role.Name}”使用")));
                 evidence.AddRange(snapshot.Roles.SelectMany(role => role.ObjectPermissions.Where(p => NormalizeReference(p.Object) == reference).Select(_ => $"OLS 角色“{role.Name}”保护")));
+                var storage = snapshot.StorageMetrics.FirstOrDefault(metric => metric.TableName.Equals(table.Name, StringComparison.OrdinalIgnoreCase) && metric.ColumnName?.Equals(column.Name, StringComparison.OrdinalIgnoreCase) == true);
+                if (storage?.TotalSizeBytes > 0) evidence.Add($"VertiPaq 占用 {FormatBytes(storage.TotalSizeBytes.Value)}，基数 {storage.Cardinality?.ToString("N0") ?? "未知"}");
                 if (evidence.Count > 0)
-                    result.Add(new RemovalCandidate("column", table.Name, column.Name, "blocked", "high", 100, new[] { "检测到项目内结构或表达式引用，不能删除" }, evidence.Distinct().Take(12).ToList()));
+                {
+                    var hasBlockingEvidence = evidence.Any(item => !item.StartsWith("VertiPaq", StringComparison.Ordinal));
+                    if (hasBlockingEvidence)
+                        result.Add(new RemovalCandidate("column", table.Name, column.Name, "blocked", "high", 100, new[] { "检测到项目内结构或表达式引用，不能删除" }, evidence.Distinct().Take(12).ToList(), storage?.TotalSizeBytes));
+                    else
+                        result.Add(new RemovalCandidate("column", table.Name, column.Name, "candidate", snapshot.LiveModel is null ? "low" : "medium", column.IsHidden ? 45 : 60,
+                            new[] { "未检测到当前模型内引用", "已读取实时模型，但仍需检查其他报表、Excel/XMLA、动态引用和源系统依赖" }, evidence, storage?.TotalSizeBytes));
+                }
                 else
-                    result.Add(new RemovalCandidate("column", table.Name, column.Name, "candidate", "low", column.IsHidden ? 55 : 70,
-                        new[] { "未检测到当前项目内引用", "仍需检查 SortByColumn、分区源查询、外部报表、Excel 和动态引用" }, Array.Empty<string>()));
+                    result.Add(new RemovalCandidate("column", table.Name, column.Name, "candidate", snapshot.LiveModel is null ? "low" : "medium", column.IsHidden ? 55 : 70,
+                        new[] { "未检测到当前项目内引用", "仍需检查 SortByColumn、分区源查询、外部报表、Excel 和动态引用" }, Array.Empty<string>(), storage?.TotalSizeBytes));
             }
         }
-        return result.OrderBy(x => x.Status).ThenBy(x => x.RiskScore).ThenBy(x => x.TableName).ThenBy(x => x.ObjectName).ToList();
+        return result.OrderBy(x => x.Status).ThenBy(x => x.RiskScore).ThenByDescending(x => x.EstimatedSavingsBytes ?? 0).ThenBy(x => x.TableName).ThenBy(x => x.ObjectName).ToList();
     }
 
     private static List<MeasureOptimizationSuggestion> AnalyzeMeasures(ProjectSnapshot snapshot)
@@ -89,6 +100,13 @@ public static partial class ModelOptimizationAnalyzer
     }
 
     private static string NormalizeReference(string value) => Regex.Replace(value.Replace("'", ""), @"\s+", "").ToLowerInvariant();
+    private static string FormatBytes(long value) => value switch
+    {
+        >= 1_073_741_824 => $"{value / 1_073_741_824d:0.##} GB",
+        >= 1_048_576 => $"{value / 1_048_576d:0.##} MB",
+        >= 1024 => $"{value / 1024d:0.##} KB",
+        _ => $"{value} B"
+    };
     private static bool ExpressionReferences(string expression, string table, string column) => NormalizeReference(expression).Contains(NormalizeReference($"{table}[{column}]")) || Regex.IsMatch(expression, $@"\[{Regex.Escape(column)}\]", RegexOptions.IgnoreCase);
     private static string StripCommentsAndStrings(string expression)
     {

@@ -10,6 +10,27 @@ public sealed class PowerToolsTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "powertools-tests-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void Storage_dmvs_are_combined_into_column_metrics()
+    {
+        static Dictionary<string, object?> Row(params (string Key, object? Value)[] values) => values.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        var columns = new[] { Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("DIMENSION_NAME", "Sales"), ("ATTRIBUTE_NAME", "Order Id"), ("DICTIONARY_SIZE", 120L), ("COLUMN_CARDINALITY", 800L)) };
+        var segments = new[]
+        {
+            Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("USED_SIZE", 1000L), ("RECORDS_COUNT", 500L)),
+            Row(("TABLE_ID", "1"), ("COLUMN_ID", "2"), ("USED_SIZE", 900L), ("RECORDS_COUNT", 500L))
+        };
+        var tables = new[] { Row(("TABLE_ID", "1"), ("RECORDS_COUNT", 1000L)) };
+
+        var metric = Assert.Single(LivePowerBiModelService.BuildStorageMetrics(columns, segments, tables));
+        Assert.Equal("Sales", metric.TableName);
+        Assert.Equal("Order Id", metric.ColumnName);
+        Assert.Equal(1000, metric.RowCount);
+        Assert.Equal(800, metric.Cardinality);
+        Assert.Equal(2020, metric.TotalSizeBytes);
+        Assert.Equal(2, metric.SegmentCount);
+    }
+
+    [Fact]
     public void Sample_exports_every_power_query_entity_with_stable_columns()
     {
         var exporter = new PowerQueryExportService();

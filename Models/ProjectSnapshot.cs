@@ -18,6 +18,8 @@ public sealed record ProjectSnapshot(
 {
     public IReadOnlyList<RemovalCandidate> RemovalCandidates { get; init; } = Array.Empty<RemovalCandidate>();
     public IReadOnlyList<MeasureOptimizationSuggestion> OptimizationSuggestions { get; init; } = Array.Empty<MeasureOptimizationSuggestion>();
+    public LiveModelInfo? LiveModel { get; init; }
+    public IReadOnlyList<ModelStorageMetric> StorageMetrics { get; init; } = Array.Empty<ModelStorageMetric>();
 
     public object Summary => new
     {
@@ -34,6 +36,7 @@ public sealed record ProjectSnapshot(
         bookmarkGroupCount = BookmarkGroups.Count,
         pageCount = Pages.Count,
         visualCount = Pages.Sum(page => page.Visuals.Count),
+        storageSizeBytes = StorageMetrics.Sum(metric => metric.TotalSizeBytes ?? 0),
         issueCount = Issues.Count
     };
 }
@@ -46,7 +49,27 @@ public sealed record RemovalCandidate(
     string Confidence,
     int RiskScore,
     IReadOnlyList<string> Reasons,
-    IReadOnlyList<string> Evidence);
+    IReadOnlyList<string> Evidence,
+    long? EstimatedSavingsBytes = null);
+
+public sealed record LiveModelInfo(
+    string Server,
+    string Database,
+    string ModelName,
+    int CompatibilityLevel,
+    DateTimeOffset ConnectedAt,
+    bool StorageMetricsAvailable);
+
+public sealed record ModelStorageMetric(
+    string TableName,
+    string? ColumnName,
+    long? RowCount,
+    long? Cardinality,
+    long? DataSizeBytes,
+    long? DictionarySizeBytes,
+    long? HierarchySizeBytes,
+    long? TotalSizeBytes,
+    int SegmentCount);
 
 public sealed record MeasureOptimizationSuggestion(
     string RuleId,
@@ -70,7 +93,16 @@ public sealed record ModelTable(
     IReadOnlyList<ModelHierarchy> Hierarchies,
     IReadOnlyList<ModelPartition> Partitions);
 
-public sealed record ModelColumn(string Name, string DataType, bool IsHidden, bool IsCalculated, string? Expression, string? Description);
+public sealed record ModelColumn(
+    string Name,
+    string DataType,
+    bool IsHidden,
+    bool IsCalculated,
+    string? Expression,
+    string? Description,
+    string? SortByColumn = null,
+    bool IsKey = false,
+    bool IsUnique = false);
 public sealed record ModelMeasure(string Name, string Expression, string? FormatString, bool IsHidden, string? Description, string? DisplayFolder);
 public sealed record ModelHierarchy(string Name, IReadOnlyList<string> Levels);
 public sealed record ModelPartition(string Name, string? Mode, string? SourceType, string? Expression);

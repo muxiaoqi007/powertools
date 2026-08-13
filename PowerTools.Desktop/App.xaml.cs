@@ -3,6 +3,8 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Windows;
 
@@ -18,7 +20,8 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _mutex = new Mutex(true, "PowerTools.Desktop.SingleInstance", out _ownsMutex);
+        var launch = ParseLaunchArguments(e.Args);
+        _mutex = new Mutex(true, "PowerTools.Desktop." + InstanceKey(launch), out _ownsMutex);
         if (!_ownsMutex)
         {
             MessageBox.Show("PowerTools 已经在运行。", "PowerTools", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -39,17 +42,24 @@ public partial class App : Application
         var logFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PowerTools", "Logs");
         Directory.CreateDirectory(logFolder);
         _serverLog = new StreamWriter(Path.Combine(logFolder, $"server-{DateTime.Now:yyyyMMdd}.jsonl"), append: true) { AutoFlush = true };
-        _server = Process.Start(new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
             FileName = serverPath,
-            Arguments = $"--urls {url}",
             WorkingDirectory = Path.GetDirectoryName(serverPath)!,
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardOutput = true,
             RedirectStandardError = true
-        });
+        };
+        startInfo.ArgumentList.Add("--urls");
+        startInfo.ArgumentList.Add(url);
+        if (launch is not null)
+        {
+            startInfo.Environment["POWERTOOLS_LIVE_SERVER"] = launch.Server;
+            startInfo.Environment["POWERTOOLS_LIVE_DATABASE"] = launch.Database;
+        }
+        _server = Process.Start(startInfo);
         if (_server is not null)
         {
             _ = PumpLogAsync(_server.StandardOutput);
@@ -64,10 +74,29 @@ public partial class App : Application
             return;
         }
 
-        var window = new MainWindow(url);
+        var window = new MainWindow(launch is null ? url : url + "/?live=1");
         MainWindow = window;
         window.Show();
     }
+
+    private static LaunchContext? ParseLaunchArguments(IReadOnlyList<string> args)
+    {
+        string? server = null, database = null;
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (args[i].Equals("--server", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Count) server = args[++i];
+            else if (args[i].Equals("--database", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Count) database = args[++i];
+        }
+        return string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(database) ? null : new(server, database);
+    }
+
+    private static string InstanceKey(LaunchContext? launch)
+    {
+        if (launch is null) return "Standalone";
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{launch.Server}\n{launch.Database}")))[..16];
+    }
+
+    private sealed record LaunchContext(string Server, string Database);
 
     protected override void OnExit(ExitEventArgs e)
     {

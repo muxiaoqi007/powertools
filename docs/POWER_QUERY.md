@@ -115,6 +115,7 @@ PowerToolsEntity(PowerToolsUrl, PowerBiProjectPath, "bookmark-states")
 | `bookmark-targets` | 书签目标视觉对象 |
 | `bookmark-states` | 书签视觉对象状态 |
 | `issues` | 质量检查问题 |
+| `storage-metrics` | VertiPaq 字段存储、基数和行数（实时模型） |
 | `removal-candidates` | 字段与度量值删除候选和引用证据 |
 | `measure-optimizations` | 度量值静态优化建议 |
 | `warnings` | 解析提示 |

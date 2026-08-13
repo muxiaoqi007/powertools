@@ -44,6 +44,7 @@
       <header class="topbar">
         <div class="crumb"><span id="projectName">未加载项目</span><small id="projectFormat">POWER BI PROJECT</small></div>
         <div class="project-loader">
+          <button id="liveButton" class="button secondary" hidden>读取当前 Power BI</button>
           <input id="pathInput" aria-label="项目目录" placeholder="输入 .pbip 项目、.Report 或 .SemanticModel 目录" />
           <button id="openButton" class="button secondary">打开目录</button>
           <button id="sampleButton" class="button primary">加载示例</button>
@@ -74,8 +75,8 @@
       <section id="optimizer" class="view">
         <div class="section-head optimizer-head"><div><p class="eyebrow">MODEL OPTIMIZER</p><h1>模型质量与优化</h1><p class="muted">基于当前项目内的依赖、报表、关系与安全元数据生成删除候选和 DAX 静态优化建议。</p></div><label class="search-box">⌕<input id="optimizerSearch" placeholder="搜索表、字段、度量值或规则" /></label></div>
         <div id="optimizerStats" class="mini-stats"></div>
-        <div class="optimizer-notice">只提供分析建议，不会直接删除或修改模型。标记为候选仅表示当前项目内未检测到引用；删除前仍需检查外部报表、Excel/XMLA、动态引用和刷新流程。</div>
-        <div class="optimizer-tabs"><button data-optimizer-tab="removal" class="active">删除候选</button><button data-optimizer-tab="dax">度量优化</button></div>
+        <div class="optimizer-notice">只提供分析建议，不会直接删除或修改模型。实时模式会把 VertiPaq 占用作为回收收益证据，但“候选”仍不等于可自动删除；删除前需检查外部报表、Excel/XMLA、动态引用和刷新流程。</div>
+        <div class="optimizer-tabs"><button data-optimizer-tab="removal" class="active">删除候选</button><button data-optimizer-tab="storage">VertiPaq 存储</button><button data-optimizer-tab="dax">度量优化</button></div>
         <div id="optimizerFilters" class="filter-pills optimizer-filters"></div>
         <div id="optimizerList" class="optimizer-list"></div>
       </section>

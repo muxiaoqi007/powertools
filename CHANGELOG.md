@@ -1,5 +1,13 @@
 # 更新记录
 
+## 0.7.0 - 2026-08-13
+
+- 新增 Power BI Desktop 外部工具模式，通过 `%server%` / `%database%` 和 TOM 读取当前打开模型。
+- 新增 VertiPaq DMV 存储指标与“模型优化”存储视图。
+- 删除候选纳入 SortByColumn、键字段、实时模型证据和估算回收空间。
+- 新增 Power BI 外部工具注册/卸载脚本，并限制实时连接只能指向本机。
+- Power Query 新增 `storage-metrics` 实体并扩充字段/删除候选列。
+
 ## 0.6.0 - 2026-08-13
 
 - 新增 WPF + WebView2 桌面入口，无黑色控制台并支持单实例运行。

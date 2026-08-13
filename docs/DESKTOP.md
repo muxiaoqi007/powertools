@@ -43,6 +43,12 @@ artifacts/desktop-win-x64/
 
 桌面包必须整体复制，不能只复制根目录的 EXE。
 
+## 注册为 Power BI 外部工具
+
+在管理员 PowerShell 中运行 `.\scripts\register-external-tool.ps1`。重启 Power BI Desktop，打开 PBIX 后在“外部工具”功能区点击 PowerTools，程序会以只读方式加载当前模型。
+
+使用 `.\scripts\register-external-tool.ps1 -Unregister` 取消注册。注册文件保存了桌面 EXE 的绝对路径，移动发布目录后需重新注册。实时连接只接受 `localhost`、`127.0.0.1` 或 `::1`。
+
 ## 浏览器和 Power Query 模式
 
 需要固定端口供 Power Query 使用时，直接运行服务引擎：

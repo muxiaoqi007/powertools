@@ -19,6 +19,8 @@
 - 孤立书签检查：识别书签引用的页面或视觉对象已不在当前 PBIR 定义中的情况
 - 项目版本比较：识别模型对象、DAX、关系、安全、依赖、页面、视觉对象和书签的新增、删除与修改
 - 模型优化：字段/度量删除候选的证据和风险分级，以及基于 Microsoft 与 SQLBI 公开最佳实践的 DAX 静态优化建议
+- Power BI Desktop 实时只读连接：通过外部工具参数和 TOM 直接读取当前打开模型
+- VertiPaq 存储分析：字段行数、基数、数据/字典占用、总占用及候选回收空间
 - 模型对象搜索、关系清单、项目指标总览
 - 轻量最佳实践检查：缺少度量值说明、非活动关系、对象越界、大面积重叠等
 - 完全本地分析，不上传报表内容
@@ -27,6 +29,8 @@
 ## 运行
 
 推荐使用桌面发布包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
+
+分析当前打开的 PBIX：先运行 `.\scripts\publish-desktop.ps1` 和 `.\scripts\register-external-tool.ps1`，重启 Power BI Desktop 后从“外部工具”功能区点击 PowerTools。
 
 开发或 Power Query 固定端口模式：
 
@@ -53,7 +57,7 @@ start-powertools.cmd
 
 ## 安全与支持范围
 
-PowerTools 当前只读取项目文件并在内存中生成分析快照，不会修改、删除或上传 Power BI 项目内容。当前版本优先支持 Power BI Project（PBIP）、Enhanced Report Format（PBIR）、TMDL 与 `model.bim`。经典二进制 `.pbix/.pbit` 并非普通 ZIP，建议先由 Power BI Desktop 另存为 PBIP 项目，再加载其目录。
+PowerTools 只读项目文件或 Power BI Desktop 本机 Analysis Services 模型，并在内存中生成分析快照，不会调用 TOM `SaveChanges`、删除或上传内容。PBIX 可通过 Power BI“外部工具”直接分析模型；页面布局与书签仍需 PBIP/PBIR 项目目录。
 
 ## 构建发布
 

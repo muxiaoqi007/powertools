@@ -17,4 +17,8 @@
     <None Remove="artifacts\**\*" />
     <None Remove="publish\**\*" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AnalysisServices" Version="19.114.12" />
+    <PackageReference Include="Microsoft.AnalysisServices.AdomdClient" Version="19.114.12" />
+  </ItemGroup>
 </Project>

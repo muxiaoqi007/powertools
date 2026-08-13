@@ -744,7 +744,7 @@ public sealed class PowerBiProjectParser
             foreach (var item in element.EnumerateArray()) Walk(item, visitor);
     }
 
-    private static List<QualityIssue> AnalyzeQuality(IReadOnlyList<ModelTable> tables, IReadOnlyList<ModelRelationship> relationships, IReadOnlyList<CalculationGroup> calculationGroups, IReadOnlyList<SecurityRole> roles, IReadOnlyList<ReportPage> pages)
+    internal static List<QualityIssue> AnalyzeQuality(IReadOnlyList<ModelTable> tables, IReadOnlyList<ModelRelationship> relationships, IReadOnlyList<CalculationGroup> calculationGroups, IReadOnlyList<SecurityRole> roles, IReadOnlyList<ReportPage> pages)
     {
         var issues = new List<QualityIssue>();
         foreach (var table in tables)
@@ -786,7 +786,7 @@ public sealed class PowerBiProjectParser
     private static bool IsDecorativeVisual(ReportVisual visual) => visual.Type is
         "shape" or "image" or "textbox" or "actionButton" or "pageNavigator" or "bookmarkNavigator";
 
-    private static List<ModelDependency> BuildDependencies(IReadOnlyList<ModelTable> tables, IReadOnlyList<CalculationGroup> calculationGroups)
+    internal static List<ModelDependency> BuildDependencies(IReadOnlyList<ModelTable> tables, IReadOnlyList<CalculationGroup> calculationGroups)
     {
         var tableMap = tables.ToDictionary(table => table.Name, StringComparer.OrdinalIgnoreCase);
         var measuresByName = tables.SelectMany(table => table.Measures.Select(measure => (table: table.Name, measure)))

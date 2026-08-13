@@ -9,6 +9,7 @@ builder.Services.AddSingleton<PowerBiProjectParser>();
 builder.Services.AddSingleton<ProjectSnapshotCache>();
 builder.Services.AddSingleton<PowerQueryExportService>();
 builder.Services.AddSingleton<SnapshotComparisonService>();
+builder.Services.AddSingleton<LivePowerBiModelService>();
 builder.Services.Configure<ProjectAccessOptions>(builder.Configuration.GetSection(ProjectAccessOptions.SectionName));
 builder.Services.AddSingleton<ProjectPathPolicy>();
 builder.Services.AddResponseCompression();
@@ -35,9 +36,9 @@ app.UseRateLimiter();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/health/live", () => Results.Ok(new { status = "live", version = "0.6.0", startedAt, uptimeSeconds = (long)(DateTimeOffset.UtcNow - startedAt).TotalSeconds }));
-app.MapGet("/health/ready", (ProjectSnapshotCache cache) => Results.Ok(new { status = "ready", version = "0.6.0", cache = cache.GetDiagnostics() }));
-app.MapGet("/api/v1/diagnostics", (ProjectSnapshotCache cache, ProjectPathPolicy paths) => Results.Ok(new { version = "0.6.0", startedAt, cache = cache.GetDiagnostics(), allowedRootCount = paths.AllowedRoots.Count }));
+app.MapGet("/health/live", () => Results.Ok(new { status = "live", version = "0.7.0", startedAt, uptimeSeconds = (long)(DateTimeOffset.UtcNow - startedAt).TotalSeconds }));
+app.MapGet("/health/ready", (ProjectSnapshotCache cache) => Results.Ok(new { status = "ready", version = "0.7.0", cache = cache.GetDiagnostics() }));
+app.MapGet("/api/v1/diagnostics", (ProjectSnapshotCache cache, ProjectPathPolicy paths, LivePowerBiModelService live) => Results.Ok(new { version = "0.7.0", startedAt, cache = cache.GetDiagnostics(), allowedRootCount = paths.AllowedRoots.Count, liveContextAvailable = live.GetStartupContext() is not null }));
 app.MapPowerToolsApi("/api");
 app.MapPowerToolsApi("/api/v1");
 

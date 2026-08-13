@@ -24,6 +24,7 @@ Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 A
 
 - `Program.cs`：应用启动、静态文件和本地解析 API。
 - `Services/PowerBiProjectParser.cs`：PBIP/PBIR/TMDL/model.bim 解析器。
+- `Services/LivePowerBiModelService.cs`：使用 TOM 读取当前 Power BI Desktop 模型，并以 DMV 采集 VertiPaq 存储统计；失败时降级为纯元数据快照。
 - `Services/ProjectSnapshotCache.cs`：为 Power Query 多实体刷新复用项目快照。
 - `Services/PowerQueryExportService.cs`：将嵌套快照映射为固定列的扁平实体。
 - `Services/SnapshotComparisonService.cs`：按稳定对象键比较两个项目快照。

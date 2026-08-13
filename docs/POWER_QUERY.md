@@ -23,7 +23,7 @@ let
             Web.Contents(
                 PowerToolsUrl,
                 [
-                    RelativePath = "api/powerquery/" & Entity,
+                    RelativePath = "api/v1/powerquery/" & Entity,
                     Query = [
                         path = ProjectPath,
                         refresh = RefreshValue
@@ -128,7 +128,7 @@ http://localhost:5128/api/powerquery/entities
 ## 接口格式
 
 ```text
-GET /api/powerquery/{entity}?path={项目目录}&refresh=false
+GET /api/v1/powerquery/{entity}?path={项目目录}&refresh=false
 ```
 
 返回结构：

@@ -28,3 +28,5 @@ jobs:
           node --check wwwroot/app.js
           node --check wwwroot/dependencies.js
           node --check wwwroot/bookmarks.js
+          node --check wwwroot/compare.js
+          node --check wwwroot/optimizer.js

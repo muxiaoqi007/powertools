@@ -1,0 +1,18 @@
+<Window x:Class="PowerTools.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="PowerTools · Power BI 模型管理" Width="1440" Height="900"
+        MinWidth="1050" MinHeight="680" WindowStartupLocation="CenterScreen"
+        Background="#090B0F">
+  <Grid>
+    <wv2:WebView2 x:Name="Browser" />
+    <Border x:Name="Loading" Background="#090B0F">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="P" Foreground="#98E16F" FontWeight="Bold" FontSize="48" HorizontalAlignment="Center" />
+        <TextBlock Text="PowerTools 正在启动…" Foreground="#E7E9ED" FontSize="16" Margin="0,18,0,5" />
+        <TextBlock Text="正在初始化本地模型分析服务" Foreground="#77818E" FontSize="11" HorizontalAlignment="Center" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

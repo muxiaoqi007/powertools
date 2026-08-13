@@ -7,7 +7,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
+    <Compile Remove="PowerTools.Desktop\**\*.cs" />
     <Content Remove="tests\**\*" />
+    <Content Remove="PowerTools.Desktop\**\*" />
+    <Content Remove="artifacts\**\*" />
+    <Content Remove="publish\**\*" />
     <None Remove="tests\**\*" />
+    <None Remove="PowerTools.Desktop\**\*" />
+    <None Remove="artifacts\**\*" />
+    <None Remove="publish\**\*" />
   </ItemGroup>
 </Project>

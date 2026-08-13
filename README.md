@@ -26,6 +26,10 @@
 
 ## 运行
 
+推荐使用桌面发布包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
+
+开发或 Power Query 固定端口模式：
+
 ```powershell
 dotnet run --project .\PowerTools.csproj
 ```
@@ -43,6 +47,7 @@ start-powertools.cmd
 - [使用指南](docs/USER_GUIDE.md)
 - [Power Query 接入指南](docs/POWER_QUERY.md)
 - [模型优化规则与安全边界](docs/MODEL_OPTIMIZER.md)
+- [桌面版启动与发布](docs/DESKTOP.md)
 - [架构与解析范围](docs/ARCHITECTURE.md)
 - [版本记录](CHANGELOG.md)
 

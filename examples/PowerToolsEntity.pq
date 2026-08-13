@@ -10,7 +10,7 @@ let
             Web.Contents(
                 PowerToolsUrl,
                 [
-                    RelativePath = "api/powerquery/" & Entity,
+                    RelativePath = "api/v1/powerquery/" & Entity,
                     Query = [
                         path = ProjectPath,
                         refresh = RefreshValue

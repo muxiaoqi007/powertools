@@ -61,6 +61,18 @@ public sealed class PowerToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Cache_returns_last_successful_snapshot_when_new_parse_fails()
+    {
+        var project = CreateMinimalProject();
+        var cache = new ProjectSnapshotCache(new PowerBiProjectParser());
+        var first = await cache.GetAsync(project);
+        Directory.Delete(project, true);
+        var fallback = await cache.GetAsync(project, refresh: true);
+        Assert.Equal(first.Name, fallback.Name);
+        Assert.Contains(fallback.Warnings, warning => warning.Contains("上一次成功快照"));
+    }
+
+    [Fact]
     public void Parser_reads_tmdl_measure_page_and_visual()
     {
         var project = CreateMinimalProject();

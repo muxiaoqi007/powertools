@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using PowerTools;
 using PowerTools.Services;
 
@@ -10,6 +11,17 @@ builder.Services.AddSingleton<PowerQueryExportService>();
 builder.Services.AddSingleton<SnapshotComparisonService>();
 builder.Services.Configure<ProjectAccessOptions>(builder.Configuration.GetSection(ProjectAccessOptions.SectionName));
 builder.Services.AddSingleton<ProjectPathPolicy>();
+builder.Services.AddResponseCompression();
+builder.Services.AddRateLimiter(options => options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local", _ => new FixedWindowRateLimiterOptions
+    {
+        PermitLimit = 120,
+        Window = TimeSpan.FromMinutes(1),
+        QueueLimit = 20,
+        QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+    })));
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options => options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffK");
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -17,67 +29,17 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 var app = builder.Build();
+var startedAt = DateTimeOffset.UtcNow;
+app.UseResponseCompression();
+app.UseRateLimiter();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok", version = "0.5.0" }));
-app.MapGet("/api/sample", () => Results.Ok(SampleProject.Create()));
-app.MapGet("/api/powerquery/entities", (PowerQueryExportService exporter) => Results.Ok(exporter.GetCatalog()));
-app.MapGet("/api/powerquery/{entity}", async (string entity, string? path, bool? refresh, ProjectSnapshotCache cache, ProjectPathPolicy paths, PowerQueryExportService exporter, CancellationToken cancellationToken) =>
-{
-    if (string.IsNullOrWhiteSpace(path)) return Results.BadRequest(new { error = "缺少 path 查询参数。" });
-    try { return Results.Ok(exporter.Export(await cache.GetAsync(paths.Resolve(path), refresh == true, cancellationToken), entity)); }
-    catch (KeyNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
-    catch (DirectoryNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
-    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
-    catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
-    catch (Exception ex) { return Results.Problem(title: "Power Query 数据导出失败", detail: ex.Message, statusCode: 500); }
-});
-app.MapPost("/api/project/open", async (OpenProjectRequest request, ProjectSnapshotCache cache, ProjectPathPolicy paths, CancellationToken cancellationToken) =>
-{
-    if (string.IsNullOrWhiteSpace(request.Path))
-        return Results.BadRequest(new { error = "请输入 PBIP 项目或报表目录。" });
-
-    try
-    {
-        return Results.Ok(await cache.GetAsync(paths.Resolve(request.Path), true, cancellationToken));
-    }
-    catch (DirectoryNotFoundException ex)
-    {
-        return Results.NotFound(new { error = ex.Message });
-    }
-    catch (InvalidDataException ex)
-    {
-        return Results.BadRequest(new { error = ex.Message });
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        return Results.Json(new { error = ex.Message }, statusCode: 403);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem(title: "项目解析失败", detail: ex.Message, statusCode: 500);
-    }
-});
-app.MapPost("/api/project/compare", async (CompareProjectsRequest request, ProjectSnapshotCache cache, ProjectPathPolicy paths, SnapshotComparisonService comparison, CancellationToken cancellationToken) =>
-{
-    if (string.IsNullOrWhiteSpace(request.BaselinePath) || string.IsNullOrWhiteSpace(request.CurrentPath))
-        return Results.BadRequest(new { error = "请输入基线项目和当前项目目录。" });
-    try
-    {
-        var baselineTask = cache.GetAsync(paths.Resolve(request.BaselinePath), request.Refresh, cancellationToken);
-        var currentTask = cache.GetAsync(paths.Resolve(request.CurrentPath), request.Refresh, cancellationToken);
-        await Task.WhenAll(baselineTask, currentTask);
-        return Results.Ok(comparison.Compare(await baselineTask, await currentTask));
-    }
-    catch (DirectoryNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
-    catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
-    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
-    catch (Exception ex) { return Results.Problem(title: "项目比较失败", detail: ex.Message, statusCode: 500); }
-});
+app.MapGet("/health/live", () => Results.Ok(new { status = "live", version = "0.6.0", startedAt, uptimeSeconds = (long)(DateTimeOffset.UtcNow - startedAt).TotalSeconds }));
+app.MapGet("/health/ready", (ProjectSnapshotCache cache) => Results.Ok(new { status = "ready", version = "0.6.0", cache = cache.GetDiagnostics() }));
+app.MapGet("/api/v1/diagnostics", (ProjectSnapshotCache cache, ProjectPathPolicy paths) => Results.Ok(new { version = "0.6.0", startedAt, cache = cache.GetDiagnostics(), allowedRootCount = paths.AllowedRoots.Count }));
+app.MapPowerToolsApi("/api");
+app.MapPowerToolsApi("/api/v1");
 
 app.MapFallbackToFile("index.html");
 app.Run();
-
-record OpenProjectRequest(string Path);
-record CompareProjectsRequest(string BaselinePath, string CurrentPath, bool Refresh = false);

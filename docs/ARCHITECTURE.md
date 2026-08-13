@@ -22,6 +22,8 @@ PowerBiProjectParser
 
 - `Program.cs`：应用启动、静态文件和本地解析 API。
 - `Services/PowerBiProjectParser.cs`：PBIP/PBIR/TMDL/model.bim 解析器。
+- `Services/ProjectSnapshotCache.cs`：为 Power Query 多实体刷新复用项目快照。
+- `Services/PowerQueryExportService.cs`：将嵌套快照映射为固定列的扁平实体。
 - `Models/ProjectSnapshot.cs`：统一的模型、报表、书签和质量检查数据结构。
 - `wwwroot/`：单页管理界面、依赖图、书签管理器和布局画布。
 - `docs/`：使用与架构文档。
@@ -62,3 +64,7 @@ PowerBiProjectParser
 - 不修改或删除源文件。
 - 本机路径仅用于当前请求，不写入仓库或配置。
 - 发布目录、构建缓存和测试数据默认被 Git 忽略。
+
+## Power Query API
+
+`GET /api/powerquery/{entity}` 接收项目路径并返回 `columns` 与 `rows`。列定义独立于数据行，即使实体为空也能保持稳定结构。同一规范化项目路径的快照缓存 10 分钟；`refresh=true` 可强制重新扫描。

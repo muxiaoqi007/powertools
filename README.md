@@ -38,6 +38,7 @@ start-powertools.cmd
 ## 文档
 
 - [使用指南](docs/USER_GUIDE.md)
+- [Power Query 接入指南](docs/POWER_QUERY.md)
 - [架构与解析范围](docs/ARCHITECTURE.md)
 - [版本记录](CHANGELOG.md)
 

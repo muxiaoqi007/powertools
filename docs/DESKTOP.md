@@ -45,7 +45,7 @@ artifacts/desktop-win-x64/
 
 ## 注册为 Power BI 外部工具
 
-在管理员 PowerShell 中运行 `.\scripts\register-external-tool.ps1`。重启 Power BI Desktop，打开 PBIX 后在“外部工具”功能区点击 PowerTools，程序会以只读方式加载当前模型。
+最简单的方式是双击桌面发布包中的 `install-external-tool.cmd`，确认 Windows 管理员提示。也可以在管理员 PowerShell 中运行 `.\scripts\register-external-tool.ps1`。重启 Power BI Desktop，打开 PBIX 后在“外部工具”功能区点击 PowerTools，程序会以只读方式加载当前模型。
 
 使用 `.\scripts\register-external-tool.ps1 -Unregister` 取消注册。注册文件保存了桌面 EXE 的绝对路径，移动发布目录后需重新注册。实时连接只接受 `localhost`、`127.0.0.1` 或 `::1`。
 

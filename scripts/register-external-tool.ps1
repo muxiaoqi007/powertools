@@ -1,5 +1,5 @@
 param(
-    [string]$PackagePath = (Join-Path (Split-Path -Parent $PSScriptRoot) "artifacts\desktop-win-x64"),
+    [string]$PackagePath,
     [switch]$Unregister
 )
 
@@ -15,6 +15,15 @@ if ($Unregister) {
     if (Test-Path -LiteralPath $manifestPath) { Remove-Item -LiteralPath $manifestPath -Force }
     Write-Host "PowerTools was removed from Power BI External Tools."
     exit 0
+}
+
+if ([string]::IsNullOrWhiteSpace($PackagePath)) {
+    $localExecutable = Join-Path $PSScriptRoot "PowerTools.Desktop.exe"
+    $PackagePath = if (Test-Path -LiteralPath $localExecutable) {
+        $PSScriptRoot
+    } else {
+        Join-Path (Split-Path -Parent $PSScriptRoot) "artifacts\desktop-win-x64"
+    }
 }
 
 $executable = Join-Path ([IO.Path]::GetFullPath($PackagePath)) "PowerTools.Desktop.exe"

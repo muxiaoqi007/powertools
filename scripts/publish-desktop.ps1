@@ -18,5 +18,6 @@ $selfContainedValue = if ($SelfContained) { "true" } else { "false" }
 dotnet publish (Join-Path $repoRoot "PowerTools.csproj") -c $Configuration -r $Runtime --self-contained $selfContainedValue -o $serverOutput
 dotnet publish (Join-Path $repoRoot "PowerTools.Desktop\PowerTools.Desktop.csproj") -c $Configuration -r $Runtime --self-contained $selfContainedValue -o $outputRoot
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "register-external-tool.ps1") -Destination $outputRoot -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install-external-tool.cmd") -Destination $outputRoot -Force
 
 Write-Host "Desktop package: $outputRoot"

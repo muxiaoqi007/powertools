@@ -30,7 +30,7 @@
 
 推荐使用桌面发布包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
 
-分析当前打开的 PBIX：先运行 `.\scripts\publish-desktop.ps1` 和 `.\scripts\register-external-tool.ps1`，重启 Power BI Desktop 后从“外部工具”功能区点击 PowerTools。
+分析当前打开的 PBIX：发布后双击桌面包中的 `install-external-tool.cmd`（或运行 `.\scripts\register-external-tool.ps1`），重启 Power BI Desktop 后从“外部工具”功能区点击 PowerTools。
 
 开发或 Power Query 固定端口模式：
 

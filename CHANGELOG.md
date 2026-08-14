@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.9.1 - 2026-08-14
+
+- 新增 PowerTools 品牌应用图标及 16–256px 多尺寸 Windows ICO。
+- 桌面窗口、任务栏、EXE、Setup、开始菜单和桌面快捷方式统一使用应用图标。
+- Power BI 外部工具清单改用真实 64px PNG 图标，移除 1×1 占位图。
+- 新增可复现的图标转换脚本和 Power BI Base64 图标资源。
+
 ## 0.9.0 - 2026-08-14
 
 - 新增标准 Windows Setup EXE，默认安装到 `C:\Program Files\PowerTools`。

@@ -31,7 +31,7 @@
 
 ## 运行
 
-推荐运行 `PowerTools-Setup-0.9.0-win-x64.exe` 完成标准安装。安装程序会安装到 `C:\Program Files\PowerTools`、创建开始菜单入口并自动注册 Power BI 外部工具；卸载时同步清理注册。详见[安装程序文档](docs/INSTALLER.md)。
+推荐运行 `PowerTools-Setup-0.9.1-win-x64.exe` 完成标准安装。安装程序会安装到 `C:\Program Files\PowerTools`、创建开始菜单入口并自动注册 Power BI 外部工具；卸载时同步清理注册。详见[安装程序文档](docs/INSTALLER.md)。
 
 不希望安装时，也可以使用桌面便携包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
 

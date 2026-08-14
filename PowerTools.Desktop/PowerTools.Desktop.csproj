@@ -6,8 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PowerTools.Desktop</AssemblyName>
+    <ApplicationIcon>..\assets\PowerTools.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="..\assets\PowerTools.ico" Link="Assets\PowerTools.ico" />
   </ItemGroup>
 </Project>

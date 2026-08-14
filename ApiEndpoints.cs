@@ -7,7 +7,7 @@ public static class ApiEndpoints
     public static void MapPowerToolsApi(this WebApplication app, string prefix)
     {
         var api = app.MapGroup(prefix);
-        api.MapGet("/health", () => Results.Ok(new { status = "ok", version = "0.9.0" }));
+        api.MapGet("/health", () => Results.Ok(new { status = "ok", version = "0.9.1" }));
         api.MapGet("/sample", () => Results.Ok(SampleProject.Create()));
         api.MapGet("/live/context", (LivePowerBiModelService live) => Results.Ok(new { available = live.GetStartupContext() is not null }));
         api.MapGet("/live/current", OpenCurrentLiveModel);

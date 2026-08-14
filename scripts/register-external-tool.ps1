@@ -30,6 +30,11 @@ $executable = Join-Path ([IO.Path]::GetFullPath($PackagePath)) "PowerTools.Deskt
 if (-not (Test-Path -LiteralPath $executable)) {
     throw "Desktop executable not found: $executable. Run scripts\publish-desktop.ps1 first."
 }
+$iconBase64Path = Join-Path ([IO.Path]::GetFullPath($PackagePath)) "PowerTools-64.base64"
+if (-not (Test-Path -LiteralPath $iconBase64Path)) {
+    throw "PowerTools icon data not found: $iconBase64Path. Run scripts\publish-desktop.ps1 first."
+}
+$iconData = "image/png;base64," + (Get-Content -Raw -LiteralPath $iconBase64Path -Encoding ASCII).Trim()
 
 New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
 $manifest = [ordered]@{
@@ -38,7 +43,7 @@ $manifest = [ordered]@{
     description = "Read-only Power BI model, report quality and optimization analysis"
     path = $executable
     arguments = '--server "%server%" --database "%database%"'
-    iconData = "image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAANSURBVBhXY2BgYPgPAAEEAQB9ssjfAAAAAElFTkSuQmCC"
+    iconData = $iconData
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 Write-Host "Registered: $manifestPath"

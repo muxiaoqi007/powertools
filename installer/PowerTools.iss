@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.9.0"
+  #define AppVersion "0.9.1"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\desktop-win-x64"
@@ -38,6 +38,7 @@ CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
 UninstallDisplayIcon={app}\{#AppExeName}
+SetupIconFile={#SourceDir}\PowerTools.ico
 VersionInfoVersion={#AppVersion}.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription=Power BI model and report management tools
@@ -83,10 +84,13 @@ procedure RegisterPowerBiExternalTool();
 var
   TargetFolder: String;
   Manifest: String;
+  IconBase64: AnsiString;
 begin
   TargetFolder := ExtractFileDir(ExternalToolManifestPath());
   if not ForceDirectories(TargetFolder) then
     RaiseException('Unable to create the Power BI External Tools directory: ' + TargetFolder);
+  if not LoadStringFromFile(ExpandConstant('{app}\PowerTools-64.base64'), IconBase64) then
+    RaiseException('Unable to load the PowerTools icon data.');
 
   Manifest :=
     '{' + #13#10 +
@@ -95,7 +99,7 @@ begin
     '  "description": "Read-only Power BI model, report quality and optimization analysis",' + #13#10 +
     '  "path": "' + JsonEscape(ExpandConstant('{app}\{#AppExeName}')) + '",' + #13#10 +
     '  "arguments": "--server \"%server%\" --database \"%database%\"",' + #13#10 +
-    '  "iconData": "image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAANSURBVBhXY2BgYPgPAAEEAQB9ssjfAAAAAElFTkSuQmCC"' + #13#10 +
+    '  "iconData": "image/png;base64,' + Trim(IconBase64) + '"' + #13#10 +
     '}' + #13#10;
 
   if not SaveStringToFile(ExternalToolManifestPath(), Manifest, False) then

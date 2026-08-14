@@ -2,7 +2,7 @@
 
 ## 标准安装
 
-普通用户推荐运行 `PowerTools-Setup-0.9.0-win-x64.exe`，不需要手动复制整个便携目录。安装程序会自动注册 Power BI 外部工具，详细说明见 [Windows 安装程序](INSTALLER.md)。
+普通用户推荐运行 `PowerTools-Setup-0.9.1-win-x64.exe`，不需要手动复制整个便携目录。安装程序会自动注册 Power BI 外部工具，详细说明见 [Windows 安装程序](INSTALLER.md)。
 
 ## 推荐启动方式
 

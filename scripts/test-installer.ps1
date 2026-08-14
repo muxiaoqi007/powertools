@@ -1,8 +1,9 @@
 param(
-    [string]$InstallerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "artifacts\installer\PowerTools-Setup-0.9.0-win-x64.exe")
+    [string]$InstallerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "artifacts\installer\PowerTools-Setup-0.9.1-win-x64.exe")
 )
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Drawing
 $isAdministrator = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdministrator) { throw "Installer lifecycle testing requires an elevated PowerShell session." }
 
@@ -35,6 +36,18 @@ try {
         throw "External tool manifest points to an unexpected executable: $($manifest.path)"
     }
     if ($manifest.arguments -ne '--server "%server%" --database "%database%"') { throw "External tool arguments are invalid." }
+    $iconPrefix = "image/png;base64,"
+    if (-not $manifest.iconData.StartsWith($iconPrefix, [StringComparison]::Ordinal)) { throw "External tool icon data is missing or invalid." }
+    $iconBytes = [Convert]::FromBase64String($manifest.iconData.Substring($iconPrefix.Length))
+    $iconStream = [IO.MemoryStream]::new($iconBytes)
+    $iconImage = [Drawing.Image]::FromStream($iconStream)
+    try {
+        if ($iconImage.Width -ne 64 -or $iconImage.Height -ne 64) { throw "External tool icon is not 64x64 pixels." }
+    }
+    finally {
+        $iconImage.Dispose()
+        $iconStream.Dispose()
+    }
 
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
     $listener.Start(); $port = ([Net.IPEndPoint]$listener.LocalEndpoint).Port; $listener.Stop()

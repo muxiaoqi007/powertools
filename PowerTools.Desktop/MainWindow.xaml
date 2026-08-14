@@ -4,7 +4,7 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="PowerTools · Power BI 模型管理" Width="1440" Height="900"
         MinWidth="1050" MinHeight="680" WindowStartupLocation="CenterScreen"
-        Background="#090B0F">
+        Background="#090B0F" Icon="Assets/PowerTools.ico">
   <Grid>
     <wv2:WebView2 x:Name="Browser" />
     <Border x:Name="Loading" Background="#090B0F">

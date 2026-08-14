@@ -1,7 +1,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [string]$Version = "0.9.0",
+    [string]$Version = "0.9.1",
     [switch]$SelfContained
 )
 
@@ -20,5 +20,8 @@ dotnet publish (Join-Path $repoRoot "PowerTools.csproj") -c $Configuration -r $R
 dotnet publish (Join-Path $repoRoot "PowerTools.Desktop\PowerTools.Desktop.csproj") -c $Configuration -r $Runtime --self-contained $selfContainedValue -p:Version=$Version -p:DebugType=None -p:DebugSymbols=false -p:SatelliteResourceLanguages=zh-Hans -o $outputRoot
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "register-external-tool.ps1") -Destination $outputRoot -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install-external-tool.cmd") -Destination $outputRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "assets\PowerTools.ico") -Destination $outputRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "assets\PowerTools-64.png") -Destination $outputRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "assets\PowerTools-64.base64") -Destination $outputRoot -Force
 
 Write-Host "Desktop package: $outputRoot"

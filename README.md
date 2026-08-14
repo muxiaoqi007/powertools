@@ -31,7 +31,9 @@
 
 ## 运行
 
-推荐使用桌面发布包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
+推荐运行 `PowerTools-Setup-0.9.0-win-x64.exe` 完成标准安装。安装程序会安装到 `C:\Program Files\PowerTools`、创建开始菜单入口并自动注册 Power BI 外部工具；卸载时同步清理注册。详见[安装程序文档](docs/INSTALLER.md)。
+
+不希望安装时，也可以使用桌面便携包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
 
 分析当前打开的 PBIX：发布后双击桌面包中的 `install-external-tool.cmd`（或运行 `.\scripts\register-external-tool.ps1`），重启 Power BI Desktop 后从“外部工具”功能区点击 PowerTools。
 
@@ -56,6 +58,7 @@ start-powertools.cmd
 - [报表质量规则](docs/REPORT_QUALITY.md)
 - [模型优化规则与安全边界](docs/MODEL_OPTIMIZER.md)
 - [桌面版启动与发布](docs/DESKTOP.md)
+- [Windows 安装程序](docs/INSTALLER.md)
 - [架构与解析范围](docs/ARCHITECTURE.md)
 - [版本记录](CHANGELOG.md)
 
@@ -67,7 +70,7 @@ PowerTools 只读项目文件或 Power BI Desktop 本机 Analysis Services 模�
 
 ```powershell
 dotnet build
-dotnet publish -c Release -o publish
+.\scripts\build-installer.ps1
 ```
 
-发布目录中的 `PowerTools.exe` 可直接启动。`publish/`、编译产物和本机测试数据已加入 `.gitignore`，不会提交到仓库。
+标准安装包输出到 `artifacts\installer`。便携包可使用 `.\scripts\publish-desktop.ps1` 单独生成。`artifacts/`、编译产物和本机测试数据已加入 `.gitignore`，不会提交到仓库。

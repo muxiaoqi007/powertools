@@ -1,5 +1,9 @@
 # PowerTools 桌面版
 
+## 标准安装
+
+普通用户推荐运行 `PowerTools-Setup-0.9.0-win-x64.exe`，不需要手动复制整个便携目录。安装程序会自动注册 Power BI 外部工具，详细说明见 [Windows 安装程序](INSTALLER.md)。
+
 ## 推荐启动方式
 
 使用桌面发布包根目录中的 `PowerTools.Desktop.exe`。不要直接双击 `server/PowerTools.exe`，后者是 Power Query、浏览器模式和后台服务使用的引擎。
@@ -45,7 +49,7 @@ artifacts/desktop-win-x64/
 
 ## 注册为 Power BI 外部工具
 
-最简单的方式是双击桌面发布包中的 `install-external-tool.cmd`，确认 Windows 管理员提示。也可以在管理员 PowerShell 中运行 `.\scripts\register-external-tool.ps1`。重启 Power BI Desktop，打开 PBIX 后在“外部工具”功能区点击 PowerTools，程序会以只读方式加载当前模型。
+标准安装程序会自动完成注册。只有使用便携包时，才需要双击桌面发布包中的 `install-external-tool.cmd`，确认 Windows 管理员提示；也可以在管理员 PowerShell 中运行 `.\scripts\register-external-tool.ps1`。重启 Power BI Desktop，打开 PBIX 后在“外部工具”功能区点击 PowerTools，程序会以只读方式加载当前模型。
 
 使用 `.\scripts\register-external-tool.ps1 -Unregister` 取消注册。注册文件保存了桌面 EXE 的绝对路径，移动发布目录后需重新注册。实时连接只接受 `localhost`、`127.0.0.1` 或 `::1`。
 

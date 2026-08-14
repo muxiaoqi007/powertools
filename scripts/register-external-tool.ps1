@@ -35,7 +35,7 @@ New-Item -ItemType Directory -Path $targetFolder -Force | Out-Null
 $manifest = [ordered]@{
     version = "1.0.0"
     name = "PowerTools"
-    description = "Read-only model dependencies, VertiPaq storage and optimization analysis"
+    description = "Read-only Power BI model, report quality and optimization analysis"
     path = $executable
     arguments = '--server "%server%" --database "%database%"'
     iconData = "image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsEAAA7BAbiRa+0AAAANSURBVBhXY2BgYPgPAAEEAQB9ssjfAAAAAElFTkSuQmCC"

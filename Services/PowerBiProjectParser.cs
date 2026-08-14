@@ -25,14 +25,18 @@ public sealed class PowerBiProjectParser
         var dependencies = BuildDependencies(tables, calculationGroups);
         var (bookmarks, bookmarkGroups) = ParseBookmarks(reportRoot, warnings);
         var pages = ParsePages(reportRoot, warnings);
+        var reportFilterCount = ParseReportFilterCount(reportRoot, warnings);
 
         if (tables.Count == 0 && pages.Count == 0)
             throw new InvalidDataException("未找到可解析的 PBIP/PBIR/TMDL 或 model.bim 内容。请选择项目根目录、*.Report 或 *.SemanticModel 目录。");
 
         var name = ResolveProjectName(path, reportRoot, modelRoot);
         var format = DetectFormat(reportRoot, modelRoot);
-        var issues = AnalyzeQuality(tables, relationships, calculationGroups, roles, pages);
-        var snapshot = new ProjectSnapshot(name, path, format, DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, pages, issues, warnings);
+        var issues = AnalyzeQuality(tables, relationships, calculationGroups, roles, pages, bookmarks);
+        var snapshot = new ProjectSnapshot(name, path, format, DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, pages, issues, warnings)
+        {
+            ReportFilterCount = reportFilterCount
+        };
         var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
         return snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
     }
@@ -675,7 +679,11 @@ public sealed class PowerBiProjectParser
                 var visuals = Directory.Exists(visualsRoot)
                     ? Directory.EnumerateFiles(visualsRoot, "visual.json", SearchOption.AllDirectories).Select(ParseVisual).Where(v => v is not null).Cast<ReportVisual>().OrderBy(v => v.Z).ToList()
                     : new List<ReportVisual>();
-                pages.Add(new ReportPage(pageName, GetString(page, "displayName") ?? pageName, GetDouble(page, "width", 1280), GetDouble(page, "height", 720), GetString(page, "visibility")?.Contains("Hidden", StringComparison.OrdinalIgnoreCase) == true, GetString(page, "displayOption"), visuals));
+                var filterCount = GetFilterCount(page);
+                var drillthroughFilterCount = CountMatchingObjects(page, (property, value) =>
+                    property.Equals("howCreated", StringComparison.OrdinalIgnoreCase) && value.ValueKind == JsonValueKind.String && value.GetString()?.Contains("Drill", StringComparison.OrdinalIgnoreCase) == true);
+                var isTooltip = GetBool(page, "isTooltip") || ContainsStringValue(page, "type", "Tooltip") || ContainsStringValue(page, "pageType", "Tooltip");
+                pages.Add(new ReportPage(pageName, GetString(page, "displayName") ?? pageName, GetDouble(page, "width", 1280), GetDouble(page, "height", 720), GetString(page, "visibility")?.Contains("Hidden", StringComparison.OrdinalIgnoreCase) == true, GetString(page, "displayOption"), visuals, filterCount, drillthroughFilterCount, isTooltip));
             }
             catch (Exception ex) { warnings.Add($"页面 {Path.GetFileName(Path.GetDirectoryName(pageFile))} 解析失败：{ex.Message}"); }
         }
@@ -705,7 +713,97 @@ public sealed class PowerBiProjectParser
         var title = ExtractVisualTitle(root) ?? FriendlyVisualType(type);
         var fields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         CollectFields(root, fields);
-        return new ReportVisual(name, title, type, GetDouble(position, "x"), GetDouble(position, "y"), Math.Max(1, GetDouble(position, "width", 160)), Math.Max(1, GetDouble(position, "height", 90)), GetDouble(position, "z"), (int)GetDouble(position, "tabOrder"), GetBool(root, "isHidden") || GetString(root, "visibility")?.Contains("Hidden", StringComparison.OrdinalIgnoreCase) == true, fields.OrderBy(x => x).ToList(), file);
+        var hasExplicitTitle = HasEnabledObject(visual, "title");
+        var hasAltText = HasMeaningfulProperty(root, "altText");
+        var hasTooltip = HasMeaningfulProperty(root, "tooltip") || fields.Any() && ContainsProperty(root, "tooltips");
+        var isGroup = visual.ValueKind != JsonValueKind.Object || !visual.TryGetProperty("visualType", out _);
+        return new ReportVisual(name, title, type, GetDouble(position, "x"), GetDouble(position, "y"), Math.Max(1, GetDouble(position, "width", 160)), Math.Max(1, GetDouble(position, "height", 90)), GetDouble(position, "z"), (int)GetDouble(position, "tabOrder"), GetBool(root, "isHidden") || GetString(root, "visibility")?.Contains("Hidden", StringComparison.OrdinalIgnoreCase) == true, fields.OrderBy(x => x).ToList(), file,
+            GetFilterCount(root), hasExplicitTitle, hasAltText, hasTooltip, GetBool(root, "drillFilterOtherVisuals"), isGroup);
+    }
+
+    private static int ParseReportFilterCount(string root, List<string> warnings)
+    {
+        var file = Path.Combine(root, "definition", "report.json");
+        if (!File.Exists(file)) return 0;
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(file), JsonOptions);
+            return GetFilterCount(document.RootElement);
+        }
+        catch (Exception ex)
+        {
+            warnings.Add($"报表筛选器解析失败：{ex.Message}");
+            return 0;
+        }
+    }
+
+    private static int GetFilterCount(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty("filterConfig", out var config) || config.ValueKind != JsonValueKind.Object || !config.TryGetProperty("filters", out var filters)) return 0;
+        return CountFilters(filters);
+    }
+
+    private static bool HasEnabledObject(JsonElement visual, string objectName)
+    {
+        if (visual.ValueKind != JsonValueKind.Object) return false;
+        foreach (var containerName in new[] { "objects", "visualContainerObjects" })
+        {
+            if (!visual.TryGetProperty(containerName, out var container) || container.ValueKind != JsonValueKind.Object || !container.TryGetProperty(objectName, out var values) || values.ValueKind != JsonValueKind.Array) continue;
+            foreach (var item in values.EnumerateArray())
+            {
+                if (!item.TryGetProperty("properties", out var properties)) continue;
+                if (TryReadLiteral(properties, "show", out var show) && show.Equals("false", StringComparison.OrdinalIgnoreCase)) continue;
+                if (TryReadLiteral(properties, "show", out show) && show.Equals("true", StringComparison.OrdinalIgnoreCase)) return true;
+                if (TryReadLiteral(properties, "text", out var text) && !string.IsNullOrWhiteSpace(text.Trim('\'', '"'))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool TryReadLiteral(JsonElement properties, string propertyName, out string value)
+    {
+        value = "";
+        if (properties.ValueKind != JsonValueKind.Object || !properties.TryGetProperty(propertyName, out var property)) return false;
+        var found = FindFirstString(property, "Value");
+        if (string.IsNullOrWhiteSpace(found)) return false;
+        value = found;
+        return true;
+    }
+
+    private static bool HasMeaningfulProperty(JsonElement root, string propertyName)
+    {
+        var found = false;
+        Walk(root, (property, value) =>
+        {
+            if (found || !property.Equals(propertyName, StringComparison.OrdinalIgnoreCase)) return;
+            if (value.ValueKind == JsonValueKind.String) found = !string.IsNullOrWhiteSpace(value.GetString());
+            else if (value.ValueKind is JsonValueKind.Object or JsonValueKind.Array) found = !string.IsNullOrWhiteSpace(FindFirstString(value, "Value"));
+        });
+        return found;
+    }
+
+    private static bool ContainsProperty(JsonElement root, string propertyName)
+    {
+        var found = false;
+        Walk(root, (property, _) => { if (property.Equals(propertyName, StringComparison.OrdinalIgnoreCase)) found = true; });
+        return found;
+    }
+
+    private static bool ContainsStringValue(JsonElement root, string propertyName, string expected)
+    {
+        var found = false;
+        Walk(root, (property, value) =>
+        {
+            if (property.Equals(propertyName, StringComparison.OrdinalIgnoreCase) && value.ValueKind == JsonValueKind.String && value.GetString()?.Contains(expected, StringComparison.OrdinalIgnoreCase) == true) found = true;
+        });
+        return found;
+    }
+
+    private static int CountMatchingObjects(JsonElement root, Func<string, JsonElement, bool> predicate)
+    {
+        var count = 0;
+        Walk(root, (property, value) => { if (predicate(property, value)) count++; });
+        return count;
     }
 
     private static string? ExtractVisualTitle(JsonElement root)
@@ -744,9 +842,15 @@ public sealed class PowerBiProjectParser
             foreach (var item in element.EnumerateArray()) Walk(item, visitor);
     }
 
-    internal static List<QualityIssue> AnalyzeQuality(IReadOnlyList<ModelTable> tables, IReadOnlyList<ModelRelationship> relationships, IReadOnlyList<CalculationGroup> calculationGroups, IReadOnlyList<SecurityRole> roles, IReadOnlyList<ReportPage> pages)
+    internal static List<QualityIssue> AnalyzeQuality(IReadOnlyList<ModelTable> tables, IReadOnlyList<ModelRelationship> relationships, IReadOnlyList<CalculationGroup> calculationGroups, IReadOnlyList<SecurityRole> roles, IReadOnlyList<ReportPage> pages, IReadOnlyList<ReportBookmark>? bookmarks = null)
     {
         var issues = new List<QualityIssue>();
+        var bookmarkManagedVisuals = (bookmarks ?? Array.Empty<ReportBookmark>())
+            .SelectMany(bookmark => bookmark.VisualStates
+                .Where(state => state.IsHidden.HasValue)
+                .Select(state => $"{state.PageName}:{state.VisualName}")
+                .Concat(bookmark.TargetVisualNames.Where(_ => !string.IsNullOrWhiteSpace(bookmark.ActivePage)).Select(name => $"{bookmark.ActivePage}:{name}")))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var table in tables)
         {
             foreach (var measure in table.Measures.Where(m => string.IsNullOrWhiteSpace(m.Description)))
@@ -762,29 +866,65 @@ public sealed class PowerBiProjectParser
             issues.Add(new QualityIssue("SECURITY-EMPTY-ROLE", "warning", "Security", "角色没有安全规则", "该角色拥有读取权限，但没有检测到 RLS 或 OLS 规则。", role.Name));
         foreach (var page in pages)
         {
+            var dataVisuals = page.Visuals.Where(visual => !visual.IsHidden && !visual.IsDecorative && !visual.IsGroup).ToList();
+            if (dataVisuals.Count > 18)
+                issues.Add(new QualityIssue("REPORT-VISUAL-DENSITY", "warning", "Report.Structure", "页面视觉对象过多", $"页面包含 {dataVisuals.Count} 个数据视觉对象，可能增加认知负担和维护复杂度。建议拆分主题或使用钻取。", page.DisplayName, page.Name));
+            if (page.IsTooltip && !page.IsHidden)
+                issues.Add(new QualityIssue("REPORT-TOOLTIP-VISIBLE", "info", "Report.Structure", "Tooltip 页面未隐藏", "作为报表 Tooltip 使用的页面通常应从普通页面导航中隐藏。", page.DisplayName, page.Name));
+            if (page.DrillthroughFilterCount > 0 && !page.Visuals.Any(visual => visual.Type is "actionButton" or "pageNavigator"))
+                issues.Add(new QualityIssue("REPORT-DRILLTHROUGH-BACK", "warning", "Report.Navigation", "钻取页缺少返回入口", $"检测到 {page.DrillthroughFilterCount} 个钻取筛选器，但没有检测到按钮或页面导航器。", page.DisplayName, page.Name));
+
+            foreach (var visual in dataVisuals)
+            {
+                if (!visual.HasExplicitTitle)
+                    issues.Add(new QualityIssue("REPORT-VISUAL-TITLE", "info", "Report.Accessibility", "视觉对象缺少显式标题", "清晰的视觉标题有助于理解指标，也能改善屏幕阅读器体验。", visual.Title, page.Name, visual.Name));
+                if (!visual.HasAltText)
+                    issues.Add(new QualityIssue("REPORT-VISUAL-ALT-TEXT", "info", "Report.Accessibility", "视觉对象缺少替代文本", "建议为承载业务信息的视觉对象补充简洁的 Alt text。", visual.Title, page.Name, visual.Name));
+                if (visual.TabOrder < 0)
+                    issues.Add(new QualityIssue("REPORT-TAB-ORDER-EXCLUDED", "warning", "Report.Accessibility", "数据视觉对象未进入 Tab 顺序", "该对象的 Tab 顺序为 -1，键盘用户可能无法访问它。", visual.Title, page.Name, visual.Name));
+                if (visual.FilterCount > 4)
+                    issues.Add(new QualityIssue("REPORT-VISUAL-FILTER-DENSITY", "info", "Report.Filters", "视觉级筛选器较多", $"该视觉对象包含 {visual.FilterCount} 个筛选器，建议确认筛选逻辑是否可移至页面或模型层。", visual.Title, page.Name, visual.Name));
+            }
+
+            var duplicatedTabOrders = dataVisuals.Where(visual => visual.TabOrder >= 0).GroupBy(visual => visual.TabOrder).Where(group => group.Count() > 1).ToList();
+            foreach (var duplicate in duplicatedTabOrders)
+                issues.Add(new QualityIssue("REPORT-TAB-ORDER-DUPLICATE", "warning", "Report.Accessibility", "Tab 顺序重复", $"Tab 顺序 {duplicate.Key} 被 {duplicate.Count()} 个数据视觉对象共同使用：{string.Join("、", duplicate.Take(4).Select(visual => visual.Title))}。", page.DisplayName, page.Name));
+
+            var offGrid = dataVisuals.Count(visual => !NearGrid(visual.X, 8) || !NearGrid(visual.Y, 8));
+            if (dataVisuals.Count >= 5 && offGrid * 1d / dataVisuals.Count >= .4)
+                issues.Add(new QualityIssue("REPORT-ALIGNMENT-GRID", "info", "Report.Layout", "页面对象未形成一致网格", $"{offGrid}/{dataVisuals.Count} 个数据视觉对象的位置未贴近 8px 网格，建议检查边缘对齐和间距一致性。", page.DisplayName, page.Name));
+
             foreach (var visual in page.Visuals)
             {
                 if (visual.X < 0 || visual.Y < 0 || visual.X + visual.Width > page.Width + 1 || visual.Y + visual.Height > page.Height + 1)
-                    issues.Add(new QualityIssue("REPORT-OUTSIDE-CANVAS", "error", "Report", "视觉对象超出画布", $"位置 ({visual.X:0}, {visual.Y:0})，尺寸 {visual.Width:0} × {visual.Height:0}。", visual.Title, page.Name));
+                    issues.Add(new QualityIssue("REPORT-OUTSIDE-CANVAS", "error", "Report.Layout", "视觉对象超出画布", $"位置 ({visual.X:0}, {visual.Y:0})，尺寸 {visual.Width:0} × {visual.Height:0}。", visual.Title, page.Name, visual.Name));
             }
+
+            var exactDuplicates = page.Visuals.Where(visual => !visual.IsHidden && !visual.IsGroup && !bookmarkManagedVisuals.Contains($"{page.Name}:{visual.Name}"))
+                .GroupBy(visual => $"{visual.Type}|{Math.Round(visual.X, 1)}|{Math.Round(visual.Y, 1)}|{Math.Round(visual.Width, 1)}|{Math.Round(visual.Height, 1)}|{string.Join(";", visual.Fields.OrderBy(field => field))}", StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1);
+            foreach (var duplicate in exactDuplicates)
+                issues.Add(new QualityIssue("REPORT-DUPLICATE-VISUAL", "warning", "Report.Layout", "检测到完全重叠的重复对象", $"{duplicate.Count()} 个可见对象具有相同类型、字段、位置和尺寸。", string.Join(" / ", duplicate.Take(3).Select(visual => visual.Title)), page.Name, duplicate.First().Name));
+
             for (var i = 0; i < page.Visuals.Count; i++)
             for (var j = i + 1; j < page.Visuals.Count; j++)
             {
                 var a = page.Visuals[i]; var b = page.Visuals[j];
+                if (a.IsHidden || b.IsHidden || a.IsGroup || b.IsGroup) continue;
+                if (bookmarkManagedVisuals.Contains($"{page.Name}:{a.Name}") && bookmarkManagedVisuals.Contains($"{page.Name}:{b.Name}")) continue;
                 var overlap = Math.Max(0, Math.Min(a.X + a.Width, b.X + b.Width) - Math.Max(a.X, b.X)) * Math.Max(0, Math.Min(a.Y + a.Height, b.Y + b.Height) - Math.Max(a.Y, b.Y));
-                var minArea = Math.Min(a.Width * a.Height, b.Width * b.Height);
-                var exactStack = Math.Abs(a.X - b.X) < 1 && Math.Abs(a.Y - b.Y) < 1 && Math.Abs(a.Width - b.Width) < 1 && Math.Abs(a.Height - b.Height) < 1;
+                var aArea = a.Width * a.Height;
+                var bArea = b.Width * b.Height;
                 var decorative = IsDecorativeVisual(a) || IsDecorativeVisual(b);
-                var likelyBookmarkLayer = exactStack && (a.IsHidden || b.IsHidden);
-                if (minArea > 0 && overlap / minArea > .80 && !decorative && !likelyBookmarkLayer)
-                    issues.Add(new QualityIssue("REPORT-OVERLAP", "warning", "Report", "视觉对象大面积重叠", $"“{a.Title}”与“{b.Title}”重叠超过较小对象的 80%。", $"{a.Title} / {b.Title}", page.Name));
+                if (aArea > 0 && bArea > 0 && overlap / aArea > .50 && overlap / bArea > .50 && !decorative)
+                    issues.Add(new QualityIssue("REPORT-OVERLAP", "warning", "Report.Layout", "视觉对象大面积重叠", $"“{a.Title}”与“{b.Title}”的重叠面积均超过各自面积的 50%。", $"{a.Title} / {b.Title}", page.Name, a.Name));
             }
         }
         return issues;
     }
 
-    private static bool IsDecorativeVisual(ReportVisual visual) => visual.Type is
-        "shape" or "image" or "textbox" or "actionButton" or "pageNavigator" or "bookmarkNavigator";
+    private static bool NearGrid(double value, double grid) => Math.Abs(value / grid - Math.Round(value / grid)) <= .15;
+    private static bool IsDecorativeVisual(ReportVisual visual) => visual.IsDecorative;
 
     internal static List<ModelDependency> BuildDependencies(IReadOnlyList<ModelTable> tables, IReadOnlyList<CalculationGroup> calculationGroups)
     {

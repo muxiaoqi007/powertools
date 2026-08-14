@@ -20,6 +20,20 @@ public sealed record ProjectSnapshot(
     public IReadOnlyList<MeasureOptimizationSuggestion> OptimizationSuggestions { get; init; } = Array.Empty<MeasureOptimizationSuggestion>();
     public LiveModelInfo? LiveModel { get; init; }
     public IReadOnlyList<ModelStorageMetric> StorageMetrics { get; init; } = Array.Empty<ModelStorageMetric>();
+    public int ReportFilterCount { get; init; }
+
+    public object ReportQuality => new
+    {
+        reportFilterCount = ReportFilterCount,
+        pageFilterCount = Pages.Sum(page => page.FilterCount),
+        visualFilterCount = Pages.Sum(page => page.Visuals.Sum(visual => visual.FilterCount)),
+        tooltipPageCount = Pages.Count(page => page.IsTooltip),
+        drillthroughPageCount = Pages.Count(page => page.DrillthroughFilterCount > 0),
+        dataVisualCount = Pages.Sum(page => page.Visuals.Count(visual => !visual.IsHidden && !visual.IsDecorative && !visual.IsGroup)),
+        explicitTitleCount = Pages.Sum(page => page.Visuals.Count(visual => !visual.IsHidden && !visual.IsDecorative && !visual.IsGroup && visual.HasExplicitTitle)),
+        altTextCount = Pages.Sum(page => page.Visuals.Count(visual => !visual.IsHidden && !visual.IsDecorative && !visual.IsGroup && visual.HasAltText)),
+        filteredVisualCount = Pages.Sum(page => page.Visuals.Count(visual => visual.FilterCount > 0))
+    };
 
     public object Summary => new
     {
@@ -36,6 +50,9 @@ public sealed record ProjectSnapshot(
         bookmarkGroupCount = BookmarkGroups.Count,
         pageCount = Pages.Count,
         visualCount = Pages.Sum(page => page.Visuals.Count),
+        reportFilterCount = ReportFilterCount,
+        pageFilterCount = Pages.Sum(page => page.FilterCount),
+        visualFilterCount = Pages.Sum(page => page.Visuals.Sum(visual => visual.FilterCount)),
         storageSizeBytes = StorageMetrics.Sum(metric => metric.TotalSizeBytes ?? 0),
         issueCount = Issues.Count
     };
@@ -182,7 +199,10 @@ public sealed record ReportPage(
     double Height,
     bool IsHidden,
     string? DisplayOption,
-    IReadOnlyList<ReportVisual> Visuals);
+    IReadOnlyList<ReportVisual> Visuals,
+    int FilterCount = 0,
+    int DrillthroughFilterCount = 0,
+    bool IsTooltip = false);
 
 public sealed record ReportVisual(
     string Name,
@@ -196,7 +216,16 @@ public sealed record ReportVisual(
     int TabOrder,
     bool IsHidden,
     IReadOnlyList<string> Fields,
-    string SourceFile);
+    string SourceFile,
+    int FilterCount = 0,
+    bool HasExplicitTitle = false,
+    bool HasAltText = false,
+    bool HasTooltip = false,
+    bool DrillFilterOtherVisuals = false,
+    bool IsGroup = false)
+{
+    public bool IsDecorative => Type is "shape" or "image" or "textbox" or "actionButton" or "pageNavigator" or "bookmarkNavigator";
+}
 
 public sealed record QualityIssue(
     string Id,
@@ -205,4 +234,5 @@ public sealed record QualityIssue(
     string Title,
     string Detail,
     string ObjectName,
-    string? PageName = null);
+    string? PageName = null,
+    string? TargetId = null);

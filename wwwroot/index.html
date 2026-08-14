@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="bookmarks.css" />
   <link rel="stylesheet" href="compare.css" />
   <link rel="stylesheet" href="optimizer.css" />
+  <link rel="stylesheet" href="report-quality.css" />
   <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
 </head>
 <body>
@@ -141,7 +142,10 @@
       </section>
 
       <section id="quality" class="view">
-        <div class="section-head"><div><p class="eyebrow">BEST PRACTICES</p><h1>质量检查</h1><p class="muted">针对模型可维护性与页面布局执行轻量规则检查。</p></div><div id="qualityFilters" class="filter-pills"><button data-severity="all" class="active">全部</button><button data-severity="error">错误</button><button data-severity="warning">警告</button><button data-severity="info">建议</button></div></div>
+        <div class="section-head"><div><p class="eyebrow">REPORT QUALITY</p><h1>报表质量与模型检查</h1><p class="muted">检查无障碍、筛选器、Tab 顺序、视觉密度、重复对象与页面布局。</p></div><div id="qualityFilters" class="filter-pills"><button data-severity="all" class="active">全部</button><button data-severity="error">错误</button><button data-severity="warning">警告</button><button data-severity="info">建议</button></div></div>
+        <div id="qualityStats" class="mini-stats"></div>
+        <div id="qualityCoverage" class="quality-coverage"></div>
+        <div class="quality-toolbar"><label class="search-box">⌕<input id="qualitySearch" placeholder="搜索问题、对象或规则" /></label><label>页面 <select id="qualityPage"><option value="all">全部页面</option></select></label><label>类别 <select id="qualityCategory"><option value="all">全部类别</option></select></label></div>
         <div id="issueList" class="issue-list"></div>
       </section>
     </main>

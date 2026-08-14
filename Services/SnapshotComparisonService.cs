@@ -17,7 +17,8 @@ public sealed class SnapshotComparisonService
         CompareObjects("CalculationItem", FlattenCalculationItems(baseline), FlattenCalculationItems(current), x => x.Key, changes);
         CompareObjects("Role", baseline.Roles, current.Roles, x => x.Name, changes);
         CompareObjects("Dependency", baseline.Dependencies, current.Dependencies, x => $"{x.SourceId}>{x.TargetId}", changes);
-        CompareObjects("Page", baseline.Pages.Select(p => new { p.Name, p.DisplayName, p.Width, p.Height, p.IsHidden, p.DisplayOption }), current.Pages.Select(p => new { p.Name, p.DisplayName, p.Width, p.Height, p.IsHidden, p.DisplayOption }), x => x.Name, changes);
+        CompareObjects("Report", new[] { new { Name = "Report filters", FilterCount = baseline.ReportFilterCount } }, new[] { new { Name = "Report filters", FilterCount = current.ReportFilterCount } }, x => x.Name, changes);
+        CompareObjects("Page", baseline.Pages.Select(p => new { p.Name, p.DisplayName, p.Width, p.Height, p.IsHidden, p.DisplayOption, p.FilterCount, p.DrillthroughFilterCount, p.IsTooltip }), current.Pages.Select(p => new { p.Name, p.DisplayName, p.Width, p.Height, p.IsHidden, p.DisplayOption, p.FilterCount, p.DrillthroughFilterCount, p.IsTooltip }), x => x.Name, changes);
         CompareObjects("Visual", FlattenVisuals(baseline), FlattenVisuals(current), x => x.Key, changes);
         CompareObjects("Bookmark", baseline.Bookmarks, current.Bookmarks, x => x.Name, changes);
         CompareObjects("BookmarkGroup", baseline.BookmarkGroups, current.BookmarkGroups, x => x.Name, changes);

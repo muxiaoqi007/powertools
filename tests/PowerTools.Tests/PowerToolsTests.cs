@@ -106,8 +106,29 @@ public sealed class PowerToolsTests : IDisposable
         var project = CreateMinimalProject();
         var result = new PowerBiProjectParser().Parse(project);
         Assert.Equal("SUM(Sales[Amount])", Assert.Single(Assert.Single(result.Tables).Measures).Expression);
-        Assert.Single(result.Pages);
-        Assert.Single(result.Pages[0].Visuals);
+        var page = Assert.Single(result.Pages);
+        var visual = Assert.Single(page.Visuals);
+        Assert.Equal(2, result.ReportFilterCount);
+        Assert.Equal(1, page.FilterCount);
+        Assert.Equal(2, visual.FilterCount);
+        Assert.Contains(result.Issues, issue => issue.Id == "REPORT-VISUAL-TITLE" && issue.TargetId == "Visual1");
+        Assert.Contains(result.Issues, issue => issue.Id == "REPORT-VISUAL-ALT-TEXT" && issue.TargetId == "Visual1");
+    }
+
+    [Fact]
+    public void Report_quality_excludes_bookmark_managed_visual_layers_from_overlap_rules()
+    {
+        var project = CreateMinimalProject();
+        var secondVisualRoot = Path.Combine(project, "Retail.Report", "definition", "pages", "Page1", "visuals", "Visual2");
+        var bookmarksRoot = Path.Combine(project, "Retail.Report", "definition", "bookmarks");
+        Directory.CreateDirectory(secondVisualRoot);
+        Directory.CreateDirectory(bookmarksRoot);
+        File.WriteAllText(Path.Combine(secondVisualRoot, "visual.json"), "{\"name\":\"Visual2\",\"position\":{\"x\":10,\"y\":10,\"width\":200,\"height\":100,\"tabOrder\":2},\"visual\":{\"visualType\":\"card\"}}");
+        File.WriteAllText(Path.Combine(bookmarksRoot, "Bookmark1.bookmark.json"), "{\"name\":\"Bookmark1\",\"options\":{\"applyOnlyToTargetVisuals\":true,\"targetVisualNames\":[\"Visual1\",\"Visual2\"]},\"explorationState\":{\"activeSection\":\"Page1\"}}");
+
+        var result = new PowerBiProjectParser().Parse(project);
+
+        Assert.DoesNotContain(result.Issues, issue => issue.Id is "REPORT-OVERLAP" or "REPORT-DUPLICATE-VISUAL");
     }
 
     [Fact]
@@ -141,9 +162,10 @@ public sealed class PowerToolsTests : IDisposable
         var visualRoot = Path.Combine(_root, "Retail.Report", "definition", "pages", "Page1", "visuals", "Visual1");
         Directory.CreateDirectory(tableRoot); Directory.CreateDirectory(visualRoot);
         File.WriteAllText(Path.Combine(tableRoot, "Sales.tmdl"), "table Sales\n\tcolumn Amount\n\t\tdataType: decimal\n\tmeasure Revenue = SUM(Sales[Amount])\n");
+        File.WriteAllText(Path.Combine(_root, "Retail.Report", "definition", "report.json"), "{\"filterConfig\":{\"filters\":[{},{}]}}");
         File.WriteAllText(Path.Combine(_root, "Retail.Report", "definition", "pages", "pages.json"), "{\"pageOrder\":[\"Page1\"]}");
-        File.WriteAllText(Path.Combine(_root, "Retail.Report", "definition", "pages", "Page1", "page.json"), "{\"name\":\"Page1\",\"displayName\":\"Overview\",\"width\":1280,\"height\":720}");
-        File.WriteAllText(Path.Combine(visualRoot, "visual.json"), "{\"name\":\"Visual1\",\"position\":{\"x\":10,\"y\":10,\"width\":200,\"height\":100},\"visual\":{\"visualType\":\"card\"}}");
+        File.WriteAllText(Path.Combine(_root, "Retail.Report", "definition", "pages", "Page1", "page.json"), "{\"name\":\"Page1\",\"displayName\":\"Overview\",\"width\":1280,\"height\":720,\"filterConfig\":{\"filters\":[{}]}}");
+        File.WriteAllText(Path.Combine(visualRoot, "visual.json"), "{\"name\":\"Visual1\",\"position\":{\"x\":10,\"y\":10,\"width\":200,\"height\":100,\"tabOrder\":-1},\"visual\":{\"visualType\":\"card\"},\"filterConfig\":{\"filters\":[{},{}]}}");
         return _root;
     }
 

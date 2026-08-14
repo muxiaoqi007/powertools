@@ -109,6 +109,7 @@ PowerToolsEntity(PowerToolsUrl, PowerBiProjectPath, "bookmark-states")
 | `pages` | 报表页面 |
 | `visuals` | 页面视觉对象和坐标 |
 | `visual-fields` | 视觉对象字段绑定 |
+| `report-quality` | 报表质量覆盖率、筛选器和特殊页面汇总 |
 | `bookmarks` | 书签定义 |
 | `bookmark-groups` | 书签组 |
 | `bookmark-group-items` | 书签组成员 |
@@ -119,6 +120,8 @@ PowerToolsEntity(PowerToolsUrl, PowerBiProjectPath, "bookmark-states")
 | `removal-candidates` | 字段与度量值删除候选和引用证据 |
 | `measure-optimizations` | 度量值静态优化建议 |
 | `warnings` | 解析提示 |
+
+`pages` 额外提供 `filterCount`、`drillthroughFilterCount` 和 `isTooltip`；`visuals` 提供视觉筛选器、标题、替代文本、Tooltip、钻取交互和视觉组属性；`issues` 的 `targetId` 是可选的视觉对象定位键。
 
 也可以访问以下地址查看实时实体目录和列名：
 

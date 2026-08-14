@@ -1,6 +1,12 @@
 using Microsoft.Extensions.Options;
 using PowerTools;
 using PowerTools.Services;
+using PowerTools.Updater;
+using System.IO.Compression;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Xunit;
 
 namespace PowerTools.Tests;
@@ -225,6 +231,143 @@ public sealed class PowerToolsTests : IDisposable
             project, new[] { new SafeChangeSelection("measure", "Sales", "Revenue") }, CancellationToken.None));
 
         Assert.Contains("不能配置", error.Message);
+    }
+
+    [Fact]
+    public async Task Update_service_prefers_verified_delta_and_validates_download()
+    {
+        var bytes = Encoding.UTF8.GetBytes("verified delta package");
+        var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        var release = JsonSerializer.Serialize(new
+        {
+            tag_name = "v1.1.0",
+            name = "PowerTools 1.1.0",
+            body = "安全更新",
+            html_url = "https://github.com/muxiaoqi007/powertools/releases/tag/v1.1.0",
+            published_at = "2026-08-14T00:00:00Z",
+            assets = new[]
+            {
+                new { name = "PowerTools-Delta-1.0.0-to-1.1.0-win-x64.zip", browser_download_url = "https://github.com/muxiaoqi007/powertools/releases/download/v1.1.0/delta.zip", size = bytes.Length, digest = "sha256:" + sha },
+                new { name = "PowerTools-Setup-1.1.0-win-x64.exe", browser_download_url = "https://github.com/muxiaoqi007/powertools/releases/download/v1.1.0/setup.exe", size = 1000, digest = "sha256:" + new string('a', 64) }
+            }
+        });
+        var handler = new StubHttpMessageHandler(request => request.RequestUri!.Host == "api.github.com"
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(release, Encoding.UTF8, "application/json") }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) });
+        var service = new UpdateService(new HttpClient(handler), Options.Create(new UpdateOptions
+        {
+            CurrentVersionOverride = "1.0.0",
+            ChannelManifestName = "",
+            StagingRoot = Path.Combine(_managedRoot, "updates")
+        }));
+
+        var check = await service.CheckAsync(true, CancellationToken.None);
+        var staged = await service.DownloadAsync(false, CancellationToken.None);
+
+        Assert.True(check.UpdateAvailable);
+        Assert.Equal("delta", check.Mode);
+        Assert.True(check.AutomaticInstallSupported);
+        Assert.Equal(sha, staged.PackageSha256);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(staged.PackagePath));
+    }
+
+    [Fact]
+    public async Task Update_service_falls_back_to_verified_full_installer()
+    {
+        var release = """
+        {"tag_name":"v2.0.0","name":"2.0","body":"","html_url":"https://github.com/muxiaoqi007/powertools/releases/tag/v2.0.0","assets":[{"name":"PowerTools-Setup-2.0.0-win-x64.exe","browser_download_url":"https://github.com/muxiaoqi007/powertools/releases/download/v2.0.0/setup.exe","size":10,"digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}
+        """;
+        var service = new UpdateService(new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(release, Encoding.UTF8, "application/json")
+        })), Options.Create(new UpdateOptions { CurrentVersionOverride = "1.5.0", ChannelManifestName = "", StagingRoot = Path.Combine(_managedRoot, "updates-full") }));
+
+        var check = await service.CheckAsync(true, CancellationToken.None);
+
+        Assert.Equal("full", check.Mode);
+        Assert.Equal("PowerTools-Setup-2.0.0-win-x64.exe", check.AssetName);
+    }
+
+    [Fact]
+    public async Task Update_service_reads_quota_free_release_channel_manifest()
+    {
+        var calls = 0;
+        var channel = """
+        {"schemaVersion":1,"version":"1.2.0","name":"PowerTools 1.2.0","notes":"notes","publishedAt":"2026-08-14T00:00:00Z","releaseUrl":"https://github.com/muxiaoqi007/powertools/releases/tag/v1.2.0","assets":[{"name":"PowerTools-Setup-1.2.0-win-x64.exe","url":"https://github.com/muxiaoqi007/powertools/releases/download/v1.2.0/PowerTools-Setup-1.2.0-win-x64.exe","size":20,"sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}]}
+        """;
+        var service = new UpdateService(new HttpClient(new StubHttpMessageHandler(_ =>
+        {
+            calls++;
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(channel, Encoding.UTF8, "application/json") };
+        })), Options.Create(new UpdateOptions { CurrentVersionOverride = "1.0.0", StagingRoot = Path.Combine(_managedRoot, "updates-channel") }));
+
+        var check = await service.CheckAsync(true, CancellationToken.None);
+
+        Assert.Equal(1, calls);
+        Assert.Equal("1.2.0", check.LatestVersion);
+        Assert.Equal("full", check.Mode);
+    }
+
+    [Fact]
+    public void Delta_engine_applies_changed_files_and_keeps_removed_files_in_backup()
+    {
+        var install = Path.Combine(_managedRoot, "installed");
+        var work = Path.Combine(_managedRoot, "apply-work");
+        var package = Path.Combine(_managedRoot, "delta.zip");
+        Directory.CreateDirectory(install);
+        File.WriteAllText(Path.Combine(install, "PowerTools.Desktop.exe"), "fake executable");
+        File.WriteAllText(Path.Combine(install, "changed.txt"), "old");
+        File.WriteAllText(Path.Combine(install, "removed.txt"), "keep in backup");
+        CreateDeltaPackage(package, "1.0.0", "1.1.0", new Dictionary<string, string>
+        {
+            ["changed.txt"] = "new",
+            ["folder/added.txt"] = "added"
+        }, new[] { "removed.txt" });
+
+        var result = DeltaUpdateEngine.Apply(package, install, work, "1.0.0", "1.1.0");
+
+        Assert.Equal("new", File.ReadAllText(Path.Combine(install, "changed.txt")));
+        Assert.Equal("added", File.ReadAllText(Path.Combine(install, "folder", "added.txt")));
+        Assert.False(File.Exists(Path.Combine(install, "removed.txt")));
+        Assert.Equal("keep in backup", File.ReadAllText(Path.Combine(result.BackupPath, "removed.txt")));
+        Assert.Equal("old", File.ReadAllText(Path.Combine(result.BackupPath, "changed.txt")));
+    }
+
+    [Fact]
+    public void Delta_engine_rejects_windows_alternate_stream_paths()
+    {
+        var install = Path.Combine(_managedRoot, "installed-unsafe");
+        var package = Path.Combine(_managedRoot, "unsafe-delta.zip");
+        Directory.CreateDirectory(install);
+        File.WriteAllText(Path.Combine(install, "PowerTools.Desktop.exe"), "fake executable");
+        CreateDeltaPackage(package, "1.0.0", "1.1.0", new Dictionary<string, string> { ["safe.txt:stream"] = "bad" }, Array.Empty<string>());
+
+        Assert.Throws<InvalidDataException>(() => DeltaUpdateEngine.Apply(package, install, Path.Combine(_managedRoot, "unsafe-work"), "1.0.0", "1.1.0"));
+        Assert.False(File.Exists(Path.Combine(install, "safe.txt")));
+    }
+
+    private static void CreateDeltaPackage(string package, string fromVersion, string toVersion, IReadOnlyDictionary<string, string> files, IReadOnlyList<string> removed)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(package)!);
+        using var archive = ZipFile.Open(package, ZipArchiveMode.Create);
+        var manifestFiles = new List<UpdatePackageFile>();
+        foreach (var item in files)
+        {
+            var bytes = Encoding.UTF8.GetBytes(item.Value);
+            manifestFiles.Add(new UpdatePackageFile(item.Key, Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), bytes.Length));
+            var entry = archive.CreateEntry("payload/" + item.Key.Replace('\\', '/'));
+            using var stream = entry.Open();
+            stream.Write(bytes);
+        }
+        var manifest = new UpdatePackageManifest(1, fromVersion, toVersion, "win-x64", DateTimeOffset.UtcNow, manifestFiles, removed);
+        var manifestEntry = archive.CreateEntry("update-package.json");
+        using var writer = new StreamWriter(manifestEntry.Open(), new UTF8Encoding(false));
+        writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+    }
+
+    private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(responder(request));
     }
 
     private SafeChangeService CreateSafeChangeService()

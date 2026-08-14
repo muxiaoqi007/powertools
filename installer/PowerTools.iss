@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.10.0"
+  #define AppVersion "0.11.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\desktop-win-x64"
@@ -96,7 +96,7 @@ begin
     '{' + #13#10 +
     '  "version": "1.0.0",' + #13#10 +
     '  "name": "PowerTools",' + #13#10 +
-    '  "description": "Read-only Power BI model, report quality and optimization analysis",' + #13#10 +
+    '  "description": "Power BI model, report quality, optimization and safe change analysis",' + #13#10 +
     '  "path": "' + JsonEscape(ExpandConstant('{app}\{#AppExeName}')) + '",' + #13#10 +
     '  "arguments": "--server \"%server%\" --database \"%database%\"",' + #13#10 +
     '  "iconData": "image/png;base64,' + Trim(IconBase64) + '"' + #13#10 +

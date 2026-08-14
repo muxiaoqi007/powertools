@@ -1,7 +1,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [string]$Version = "0.10.0",
+    [string]$Version = "0.11.0",
     [switch]$SelfContained
 )
 
@@ -9,15 +9,20 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $outputRoot = Join-Path $repoRoot "artifacts\desktop-$Runtime"
 $serverOutput = Join-Path $outputRoot "server"
+$updaterOutput = Join-Path $repoRoot "artifacts\updater-$Runtime"
 
 if (Test-Path -LiteralPath $outputRoot) {
     Remove-Item -LiteralPath $outputRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Path $serverOutput -Force | Out-Null
+if (Test-Path -LiteralPath $updaterOutput) { Remove-Item -LiteralPath $updaterOutput -Recurse -Force }
+New-Item -ItemType Directory -Path $updaterOutput -Force | Out-Null
 
 $selfContainedValue = if ($SelfContained) { "true" } else { "false" }
 dotnet publish (Join-Path $repoRoot "PowerTools.csproj") -c $Configuration -r $Runtime --self-contained $selfContainedValue -p:Version=$Version -p:DebugType=None -p:DebugSymbols=false -p:SatelliteResourceLanguages=zh-Hans -o $serverOutput
 dotnet publish (Join-Path $repoRoot "PowerTools.Desktop\PowerTools.Desktop.csproj") -c $Configuration -r $Runtime --self-contained $selfContainedValue -p:Version=$Version -p:DebugType=None -p:DebugSymbols=false -p:SatelliteResourceLanguages=zh-Hans -o $outputRoot
+dotnet publish (Join-Path $repoRoot "PowerTools.Updater\PowerTools.Updater.csproj") -c $Configuration -r $Runtime --self-contained $selfContainedValue -p:Version=$Version -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $updaterOutput
+Copy-Item -LiteralPath (Join-Path $updaterOutput "PowerTools.Updater.exe") -Destination $outputRoot -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "register-external-tool.ps1") -Destination $outputRoot -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install-external-tool.cmd") -Destination $outputRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "assets\PowerTools.ico") -Destination $outputRoot -Force

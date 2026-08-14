@@ -30,3 +30,5 @@ jobs:
           node --check wwwroot/bookmarks.js
           node --check wwwroot/compare.js
           node --check wwwroot/optimizer.js
+          node --check wwwroot/safe-changes.js
+          node --check wwwroot/updates.js

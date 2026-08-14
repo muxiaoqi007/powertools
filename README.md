@@ -23,6 +23,7 @@
 - 项目版本比较：识别模型对象、DAX、关系、安全、依赖、页面、视觉对象和书签的新增、删除与修改
 - 模型优化：字段/度量删除候选的证据和风险分级，以及基于 Microsoft 与 SQLBI 公开最佳实践的 DAX 静态优化建议
 - 安全修改工作区：候选对象计划预览、风险门禁、源指纹防漂移、隔离 PBIP/TMDL 副本、逐文件备份、审计与回滚
+- GitHub 更新：启动后台检测、手工检查、SHA-256 校验、精确基线增量包、完整安装包回退、独立更新器和失败恢复
 - Power BI Desktop 实时只读连接：通过外部工具参数和 TOM 直接读取当前打开模型
 - VertiPaq 存储分析：字段行数、基数、数据/字典占用、总占用及候选回收空间
 - 模型对象搜索、关系清单、项目指标总览
@@ -32,7 +33,7 @@
 
 ## 运行
 
-推荐运行 `PowerTools-Setup-0.10.0-win-x64.exe` 完成标准安装。安装程序会安装到 `C:\Program Files\PowerTools`、创建开始菜单入口并自动注册 Power BI 外部工具；卸载时同步清理注册。详见[安装程序文档](docs/INSTALLER.md)。
+推荐运行 `PowerTools-Setup-0.11.0-win-x64.exe` 完成标准安装。安装程序会安装到 `C:\Program Files\PowerTools`、创建开始菜单入口并自动注册 Power BI 外部工具；卸载时同步清理注册。详见[安装程序文档](docs/INSTALLER.md)。
 
 不希望安装时，也可以使用桌面便携包中的 `PowerTools.Desktop.exe`，它会自动打开独立窗口并隐藏后台服务。详见[桌面版文档](docs/DESKTOP.md)。
 
@@ -59,6 +60,7 @@ start-powertools.cmd
 - [报表质量规则](docs/REPORT_QUALITY.md)
 - [模型优化规则与安全边界](docs/MODEL_OPTIMIZER.md)
 - [安全修改、审计与回滚](docs/SAFE_CHANGES.md)
+- [GitHub 更新与增量升级](docs/UPDATES.md)
 - [桌面版启动与发布](docs/DESKTOP.md)
 - [Windows 安装程序](docs/INSTALLER.md)
 - [架构与解析范围](docs/ARCHITECTURE.md)

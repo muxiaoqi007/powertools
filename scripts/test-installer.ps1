@@ -1,5 +1,5 @@
 param(
-    [string]$InstallerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "artifacts\installer\PowerTools-Setup-0.10.0-win-x64.exe")
+    [string]$InstallerPath = (Join-Path (Split-Path -Parent $PSScriptRoot) "artifacts\installer\PowerTools-Setup-0.11.0-win-x64.exe")
 )
 
 $ErrorActionPreference = "Stop"

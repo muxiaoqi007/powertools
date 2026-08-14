@@ -10,6 +10,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(button=>button.addEven
 document.querySelector('[data-model-toggle]').addEventListener('click',event=>{const button=event.currentTarget;const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));$('modelNavChildren').classList.toggle('open',open)});
 document.querySelectorAll('[data-jump]').forEach(button=>button.addEventListener('click',()=>switchView(button.dataset.jump)));
 bindSafeChanges();
+bindUpdates();
 $('sampleButton').addEventListener('click',()=>load('/api/sample'));
 $('liveButton').addEventListener('click',()=>load('/api/live/current'));
 $('openButton').addEventListener('click',openProject);
@@ -101,3 +102,4 @@ function focusQualityIssue(issue){const page=state.data.pages.find(p=>p.name===i
 let toastTimer;function toast(message,error=false){const el=$('toast');el.textContent=message;el.className=error?'show error':'show';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='',3000)}
 async function initialize(){const liveRequested=new URLSearchParams(location.search).get('live')==='1';try{const response=await fetch('/api/live/context');const context=await response.json();$('liveButton').hidden=!context.available;if(liveRequested&&context.available){await load('/api/live/current');return}}catch{}await load('/api/sample')}
 if(!state.data)initialize();
+setTimeout(()=>checkForUpdates(false,false),2500);

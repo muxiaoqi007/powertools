@@ -20,6 +20,8 @@ PowerBiProjectParser
 
 Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 ASP.NET Core 子进程。桌面窗口和服务生命周期绑定，并使用随机回环端口。
 
+软件更新由后端 `UpdateService` 负责读取 GitHub Release 元数据和校验下载，WebView2 消息桥只接受受控暂存路径。`PowerTools.Updater.exe` 在桌面退出后独立替换安装文件，避免更新正在运行的 EXE/DLL。
+
 ## 目录职责
 
 - `Program.cs`：应用启动、静态文件和本地解析 API。
@@ -30,6 +32,8 @@ Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 A
 - `Services/SnapshotComparisonService.cs`：按稳定对象键比较两个项目快照。
 - `Services/ProjectPathPolicy.cs`：限制允许读取的项目根目录。
 - `Services/SafeChangeService.cs`：修改计划、源指纹、隔离复制、备份、原子写入、审计和回滚。
+- `Services/UpdateService.cs`：GitHub 通道/API/重定向检测、增量优先选择、下载限制和 SHA-256 校验。
+- `PowerTools.Updater/`：增量包验证、逐文件备份、原子替换、失败恢复和完整安装包回退。
 - `Models/ProjectSnapshot.cs`：统一的模型、报表、书签和质量检查数据结构。
 - `wwwroot/`：单页管理界面、依赖图、书签管理器和布局画布。
 - `docs/`：使用与架构文档。
@@ -94,6 +98,7 @@ Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 A
 - JSON 结构化日志；桌面壳收集到本地日志文件。
 - 存活、就绪和缓存诊断接口。
 - 修改计划持久化、每计划互斥锁、确认短语、源指纹漂移检查和逐文件回滚。
+- 更新元数据缓存、下载互斥、GitHub API 配额降级、独立进程更新和安装文件备份。
 
 ## 安全修改事务边界
 

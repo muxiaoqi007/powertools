@@ -4,19 +4,22 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>PowerTools</RootNamespace>
-    <Version>0.10.0</Version>
+    <Version>0.11.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
     <Compile Remove="PowerTools.Desktop\**\*.cs" />
+    <Compile Remove="PowerTools.Updater\**\*.cs" />
     <Content Remove="tests\**\*" />
     <Content Remove="testdata\**\*" />
     <Content Remove="PowerTools.Desktop\**\*" />
+    <Content Remove="PowerTools.Updater\**\*" />
     <Content Remove="artifacts\**\*" />
     <Content Remove="publish\**\*" />
     <None Remove="tests\**\*" />
     <None Remove="testdata\**\*" />
     <None Remove="PowerTools.Desktop\**\*" />
+    <None Remove="PowerTools.Updater\**\*" />
     <None Remove="artifacts\**\*" />
     <None Remove="publish\**\*" />
   </ItemGroup>

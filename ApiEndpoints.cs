@@ -7,7 +7,7 @@ public static class ApiEndpoints
     public static void MapPowerToolsApi(this WebApplication app, string prefix)
     {
         var api = app.MapGroup(prefix);
-        api.MapGet("/health", () => Results.Ok(new { status = "ok", version = "0.10.0" }));
+        api.MapGet("/health", () => Results.Ok(new { status = "ok", version = "0.11.0" }));
         api.MapGet("/sample", () => Results.Ok(SampleProject.Create()));
         api.MapGet("/live/context", (LivePowerBiModelService live) => Results.Ok(new { available = live.GetStartupContext() is not null }));
         api.MapGet("/live/current", OpenCurrentLiveModel);
@@ -20,6 +20,26 @@ public static class ApiEndpoints
         api.MapPost("/changes/apply", ApplySafeChangePlan);
         api.MapPost("/changes/rollback", RollbackSafeChangePlan);
         api.MapGet("/changes/{planId}", GetSafeChangePlan);
+        api.MapGet("/updates/check", CheckForUpdates);
+        api.MapPost("/updates/download", DownloadUpdate);
+    }
+
+    private static async Task<IResult> CheckForUpdates(bool? refresh, UpdateService updates, CancellationToken cancellationToken)
+    {
+        try { return Results.Ok(await updates.CheckAsync(refresh == true, cancellationToken)); }
+        catch (HttpRequestException ex) { return Results.Problem(title: "GitHub 更新检查失败", detail: ex.Message, statusCode: 502); }
+        catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        catch (Exception ex) { return Results.Problem(title: "更新检查失败", detail: ex.Message, statusCode: 500); }
+    }
+
+    private static async Task<IResult> DownloadUpdate(UpdateDownloadRequest request, UpdateService updates, CancellationToken cancellationToken)
+    {
+        try { return Results.Ok(await updates.DownloadAsync(request.Refresh, cancellationToken)); }
+        catch (HttpRequestException ex) { return Results.Problem(title: "GitHub 更新下载失败", detail: ex.Message, statusCode: 502); }
+        catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+        catch (Exception ex) { return Results.Problem(title: "更新下载失败", detail: ex.Message, statusCode: 500); }
     }
 
     private static async Task<IResult> CreateSafeChangePlan(SafeChangePlanRequest request, SafeChangeService changes, ProjectPathPolicy paths, CancellationToken cancellationToken)

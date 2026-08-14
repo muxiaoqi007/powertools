@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows;
+using System.Reflection;
 
 namespace PowerTools.Desktop;
 
@@ -54,6 +55,7 @@ public partial class App : Application
         };
         startInfo.ArgumentList.Add("--urls");
         startInfo.ArgumentList.Add(url);
+        startInfo.Environment["POWERTOOLS_DESKTOP_HOST"] = "1";
         if (launch is not null)
         {
             startInfo.Environment["POWERTOOLS_LIVE_SERVER"] = launch.Server;
@@ -145,4 +147,60 @@ public partial class App : Application
         }
         return false;
     }
+
+    public void StartUpdate(UpdateLaunchRequest request)
+    {
+        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var updateRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(localData, "PowerTools", "Updates")));
+        var package = Path.GetFullPath(request.PackagePath);
+        if (!package.StartsWith(updateRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(package))
+            throw new UnauthorizedAccessException("更新包不在 PowerTools 受控暂存目录中。");
+        if (request.PackageSha256.Length != 64 || !request.PackageSha256.All(Uri.IsHexDigit)) throw new InvalidDataException("更新包摘要格式无效。");
+        if (request.Mode is not ("delta" or "full")) throw new InvalidDataException("更新模式无效。");
+
+        var updater = Path.Combine(AppContext.BaseDirectory, "PowerTools.Updater.exe");
+        if (!File.Exists(updater)) throw new FileNotFoundException("当前安装缺少 PowerTools.Updater.exe，请先使用完整安装包升级。", updater);
+        var launcher = Path.Combine(Path.GetDirectoryName(package)!, $"PowerTools.Updater-{Guid.NewGuid():N}.exe");
+        File.Copy(updater, launcher, false);
+        var currentVersion = NormalizeVersion(typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0");
+        if (!Version.TryParse(currentVersion, out var current) || !Version.TryParse(NormalizeVersion(request.TargetVersion), out var targetVersion) || targetVersion <= current)
+            throw new InvalidDataException("目标版本不是可接受的升级版本。");
+        var expectedName = request.Mode == "delta"
+            ? $"PowerTools-Delta-{currentVersion}-to-{NormalizeVersion(request.TargetVersion)}-win-x64.zip"
+            : $"PowerTools-Setup-{NormalizeVersion(request.TargetVersion)}-win-x64.exe";
+        if (!Path.GetFileName(package).Equals(expectedName, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("更新包名称与升级任务不匹配。");
+        var start = new ProcessStartInfo
+        {
+            FileName = launcher,
+            WorkingDirectory = Path.GetDirectoryName(package)!,
+            UseShellExecute = true,
+            Verb = "runas",
+            WindowStyle = ProcessWindowStyle.Hidden
+        };
+        Add("package", package);
+        Add("sha256", request.PackageSha256);
+        Add("mode", request.Mode);
+        Add("install-root", AppContext.BaseDirectory);
+        Add("current-version", currentVersion);
+        Add("target-version", request.TargetVersion);
+        Add("restart", Path.Combine(AppContext.BaseDirectory, "PowerTools.Desktop.exe"));
+        Add("wait-pid", Environment.ProcessId.ToString());
+        _ = Process.Start(start) ?? throw new InvalidOperationException("无法启动独立更新器。");
+
+        void Add(string name, string value)
+        {
+            start.ArgumentList.Add("--" + name);
+            start.ArgumentList.Add(value);
+        }
+    }
+
+    private static string NormalizeVersion(string value)
+    {
+        var result = value.Trim().TrimStart('v', 'V');
+        var suffix = result.IndexOfAny(new[] { '+', '-' });
+        return suffix > 0 ? result[..suffix] : result;
+    }
 }
+
+public sealed record UpdateLaunchRequest(string PackagePath, string PackageSha256, string Mode, string TargetVersion);

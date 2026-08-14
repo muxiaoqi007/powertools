@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without v prefix
+        required: true
+        type: string
+      base_version:
+        description: Previous version for delta package; leave empty for full-only release
+        required: false
+        type: string
+      prerelease:
+        description: Publish as prerelease
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --yes --no-progress
+      - name: Restore and test
+        shell: powershell
+        run: |
+          dotnet restore PowerTools.sln
+          dotnet test PowerTools.sln -c Release --verbosity normal
+      - name: Download baseline portable package
+        if: ${{ inputs.base_version != '' }}
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Path artifacts/baseline-download,artifacts/baseline -Force | Out-Null
+          gh release download "v${{ inputs.base_version }}" --pattern "PowerTools-Desktop-${{ inputs.base_version }}-win-x64.zip" --dir artifacts/baseline-download
+          Expand-Archive -LiteralPath "artifacts/baseline-download/PowerTools-Desktop-${{ inputs.base_version }}-win-x64.zip" -DestinationPath artifacts/baseline
+      - name: Build release assets with delta
+        if: ${{ inputs.base_version != '' }}
+        shell: powershell
+        run: .\scripts\build-release-assets.ps1 -Version "${{ inputs.version }}" -BaseVersion "${{ inputs.base_version }}" -BaselineDirectory artifacts/baseline
+      - name: Build full release assets
+        if: ${{ inputs.base_version == '' }}
+        shell: powershell
+        run: .\scripts\build-release-assets.ps1 -Version "${{ inputs.version }}"
+      - name: Publish GitHub Release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $flags = @()
+          if ("${{ inputs.prerelease }}" -eq "true") { $flags += "--prerelease" }
+          $assets = @(Get-ChildItem -LiteralPath "artifacts/release-${{ inputs.version }}" -File | ForEach-Object FullName)
+          gh release create "v${{ inputs.version }}" @assets --title "PowerTools ${{ inputs.version }}" --generate-notes @flags

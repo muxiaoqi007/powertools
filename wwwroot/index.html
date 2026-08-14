@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="optimizer.css" />
   <link rel="stylesheet" href="report-quality.css" />
   <link rel="stylesheet" href="safe-changes.css" />
+  <link rel="stylesheet" href="updates.css" />
   <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
 </head>
 <body>
@@ -47,6 +48,7 @@
       <header class="topbar">
         <div class="crumb"><span id="projectName">未加载项目</span><small id="projectFormat">POWER BI PROJECT</small></div>
         <div class="project-loader">
+          <button id="updateButton" class="button secondary update-button"><i></i><span>检查更新</span></button>
           <button id="liveButton" class="button secondary" hidden>读取当前 Power BI</button>
           <input id="pathInput" aria-label="项目目录" placeholder="输入 .pbip 项目、.Report 或 .SemanticModel 目录" />
           <button id="openButton" class="button secondary">打开目录</button>
@@ -169,11 +171,19 @@
       </section>
     </main>
   </div>
+  <div id="updateModal" class="update-modal" hidden>
+    <div class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
+      <div class="update-dialog-head"><div><p class="eyebrow">POWERTOOLS UPDATE</p><h2 id="updateTitle">软件更新</h2></div><button id="updateClose" aria-label="关闭更新窗口">×</button></div>
+      <div id="updateContent" class="update-content"></div>
+      <div class="update-dialog-actions"><button id="updateLater" class="button secondary">稍后</button><button id="updateAction" class="button primary">检查更新</button></div>
+    </div>
+  </div>
   <script src="dependencies.js"></script>
   <script src="bookmarks.js"></script>
   <script src="compare.js"></script>
   <script src="optimizer.js"></script>
   <script src="safe-changes.js"></script>
+  <script src="updates.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -14,6 +14,8 @@ builder.Services.Configure<ProjectAccessOptions>(builder.Configuration.GetSectio
 builder.Services.AddSingleton<ProjectPathPolicy>();
 builder.Services.Configure<SafeChangeOptions>(builder.Configuration.GetSection(SafeChangeOptions.SectionName));
 builder.Services.AddSingleton<SafeChangeService>();
+builder.Services.Configure<UpdateOptions>(builder.Configuration.GetSection(UpdateOptions.SectionName));
+builder.Services.AddHttpClient<UpdateService>(client => client.Timeout = TimeSpan.FromMinutes(10));
 builder.Services.AddResponseCompression();
 builder.Services.AddRateLimiter(options => options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local", _ => new FixedWindowRateLimiterOptions
@@ -38,9 +40,9 @@ app.UseRateLimiter();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/health/live", () => Results.Ok(new { status = "live", version = "0.10.0", startedAt, uptimeSeconds = (long)(DateTimeOffset.UtcNow - startedAt).TotalSeconds }));
-app.MapGet("/health/ready", (ProjectSnapshotCache cache) => Results.Ok(new { status = "ready", version = "0.10.0", cache = cache.GetDiagnostics() }));
-app.MapGet("/api/v1/diagnostics", (ProjectSnapshotCache cache, ProjectPathPolicy paths, LivePowerBiModelService live) => Results.Ok(new { version = "0.10.0", startedAt, cache = cache.GetDiagnostics(), allowedRootCount = paths.AllowedRoots.Count, liveContextAvailable = live.GetStartupContext() is not null }));
+app.MapGet("/health/live", () => Results.Ok(new { status = "live", version = "0.11.0", startedAt, uptimeSeconds = (long)(DateTimeOffset.UtcNow - startedAt).TotalSeconds }));
+app.MapGet("/health/ready", (ProjectSnapshotCache cache) => Results.Ok(new { status = "ready", version = "0.11.0", cache = cache.GetDiagnostics() }));
+app.MapGet("/api/v1/diagnostics", (ProjectSnapshotCache cache, ProjectPathPolicy paths, LivePowerBiModelService live) => Results.Ok(new { version = "0.11.0", startedAt, cache = cache.GetDiagnostics(), allowedRootCount = paths.AllowedRoots.Count, liveContextAvailable = live.GetStartupContext() is not null }));
 app.MapPowerToolsApi("/api");
 app.MapPowerToolsApi("/api/v1");
 

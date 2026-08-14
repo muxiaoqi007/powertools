@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\PowerTools.csproj" />
+    <ProjectReference Include="..\..\PowerTools.Updater\PowerTools.Updater.csproj" />
   </ItemGroup>
 
 </Project>

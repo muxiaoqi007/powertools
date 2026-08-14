@@ -1,9 +1,9 @@
 # Windows 安装程序
 
-PowerTools 0.10.0 提供标准 x64 Windows 安装程序：
+PowerTools 0.11.0 提供标准 x64 Windows 安装程序：
 
 ```text
-PowerTools-Setup-0.10.0-win-x64.exe
+PowerTools-Setup-0.11.0-win-x64.exe
 ```
 
 ## 安装行为
@@ -42,19 +42,19 @@ PowerTools-Setup-0.10.0-win-x64.exe
 
 ```powershell
 winget install --id JRSoftware.InnoSetup --exact
-.\scripts\build-installer.ps1 -Version 0.10.0
+.\scripts\build-installer.ps1 -Version 0.11.0
 ```
 
 输出位置：
 
 ```text
-artifacts\installer\PowerTools-Setup-0.10.0-win-x64.exe
+artifacts\installer\PowerTools-Setup-0.11.0-win-x64.exe
 ```
 
 构建默认执行自包含发布。若只需要体积更小、依赖目标电脑 .NET 8 的安装包，可使用：
 
 ```powershell
-.\scripts\build-installer.ps1 -Version 0.10.0 -FrameworkDependent
+.\scripts\build-installer.ps1 -Version 0.11.0 -FrameworkDependent
 ```
 
 已经生成便携包、只需重新编译安装器时使用 `-SkipPublish`。
@@ -74,7 +74,7 @@ artifacts\installer\PowerTools-Setup-0.10.0-win-x64.exe
 企业软件分发可使用 Inno Setup 标准参数：
 
 ```powershell
-PowerTools-Setup-0.10.0-win-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+PowerTools-Setup-0.11.0-win-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
 静默部署同样会自动注册 Power BI 外部工具。

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerTools.Tests", "tests\P
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerTools.Desktop", "PowerTools.Desktop\PowerTools.Desktop.csproj", "{5DE59AFC-D34E-4DDA-99C8-A5AD2612252D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PowerTools.Updater", "PowerTools.Updater\PowerTools.Updater.csproj", "{BCAE2CE6-4F4F-4B3D-9C83-3EAC00F43585}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{5DE59AFC-D34E-4DDA-99C8-A5AD2612252D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5DE59AFC-D34E-4DDA-99C8-A5AD2612252D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5DE59AFC-D34E-4DDA-99C8-A5AD2612252D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCAE2CE6-4F4F-4B3D-9C83-3EAC00F43585}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCAE2CE6-4F4F-4B3D-9C83-3EAC00F43585}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCAE2CE6-4F4F-4B3D-9C83-3EAC00F43585}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCAE2CE6-4F4F-4B3D-9C83-3EAC00F43585}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{EE01DBE7-1A56-4C72-8A55-A93D0124AD93} = {8557642E-7ED0-436B-AAC8-2497E084C750}

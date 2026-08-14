@@ -16,7 +16,7 @@ PowerBiProjectParser
     └─ 质量规则分析
 ```
 
-后端只读取本机文件并返回内存快照。前端不保存项目数据，API 也没有写入或删除端点。
+默认分析链路只读取本机文件并返回内存快照。P2 的安全修改链路有独立端点，只允许把经过风险门禁的变更写入 PowerTools 管理的隔离工作区；源项目和实时 PBIX 始终只读。
 
 Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 ASP.NET Core 子进程。桌面窗口和服务生命周期绑定，并使用随机回环端口。
 
@@ -29,6 +29,7 @@ Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 A
 - `Services/PowerQueryExportService.cs`：将嵌套快照映射为固定列的扁平实体。
 - `Services/SnapshotComparisonService.cs`：按稳定对象键比较两个项目快照。
 - `Services/ProjectPathPolicy.cs`：限制允许读取的项目根目录。
+- `Services/SafeChangeService.cs`：修改计划、源指纹、隔离复制、备份、原子写入、审计和回滚。
 - `Models/ProjectSnapshot.cs`：统一的模型、报表、书签和质量检查数据结构。
 - `wwwroot/`：单页管理界面、依赖图、书签管理器和布局画布。
 - `docs/`：使用与架构文档。
@@ -74,6 +75,7 @@ Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 A
 - 不连接云端 Power BI 服务。
 - 不上传 PBIP/PBIR/TMDL 文件。
 - 不修改或删除源文件。
+- 安全修改只写受控隔离副本，不直接删除模型对象。
 - 本机路径仅用于当前请求，不写入仓库或配置。
 - 发布目录、构建缓存和测试数据默认被 Git 忽略。
 
@@ -91,6 +93,13 @@ Windows 桌面版由 WPF + WebView2 承载同一前端，启动一个隐藏的 A
 - 全局固定窗口限流与响应压缩。
 - JSON 结构化日志；桌面壳收集到本地日志文件。
 - 存活、就绪和缓存诊断接口。
+- 修改计划持久化、每计划互斥锁、确认短语、源指纹漂移检查和逐文件回滚。
+
+## 安全修改事务边界
+
+`POST /api/v1/changes/plan` 会重新解析项目并只接受 `candidate` 字段或度量值。计划保存对象证据、相对 TMDL 路径和项目内容指纹。`apply` 在确认短语匹配且指纹未变化时，才把项目复制到受控工作区，备份目标文件并以同目录临时文件 + 原子替换写入 `isHidden`。`rollback` 只允许恢复位于受控工作区内、且属于该计划的备份文件。
+
+该链路不删除工作区、备份或审计文件，失败时也不会触碰源项目。详细用户流程见[安全修改与回滚](SAFE_CHANGES.md)。
 
 首次并发请求通过 `Lazy<Task<ProjectSnapshot>>` 合并为一次扫描。缓存同时记录项目文件数量和最新修改时间，检测到磁盘变化会自动重新解析。
 

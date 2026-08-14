@@ -8,6 +8,7 @@ namespace PowerTools.Tests;
 public sealed class PowerToolsTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "powertools-tests-" + Guid.NewGuid().ToString("N"));
+    private readonly string _managedRoot = Path.Combine(Path.GetTempPath(), "powertools-managed-tests-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
     public void Storage_dmvs_are_combined_into_column_metrics()
@@ -156,6 +157,87 @@ public sealed class PowerToolsTests : IDisposable
         Assert.Contains(result.Suggestions, x => x.RuleId == "DAX-003" && x.MeasureName == "Filtered");
     }
 
+    [Fact]
+    public async Task Safe_change_applies_only_to_managed_copy_and_rollback_restores_it()
+    {
+        var project = CreateMinimalProject();
+        var sourceFile = Path.Combine(project, "Retail.SemanticModel", "definition", "tables", "Sales.tmdl");
+        var sourceBefore = await File.ReadAllBytesAsync(sourceFile);
+        var service = CreateSafeChangeService();
+
+        var plan = await service.CreatePlanAsync(project, new[] { new SafeChangeSelection("measure", "Sales", "Revenue") }, CancellationToken.None);
+        service = CreateSafeChangeService(); // 模拟进程重启后从持久化计划继续。
+        var applied = await service.ApplyAsync(plan.PlanId, plan.ConfirmationPhrase, CancellationToken.None);
+
+        Assert.Equal("applied", applied.Status);
+        Assert.NotNull(applied.WorkspacePath);
+        Assert.Equal(sourceBefore, await File.ReadAllBytesAsync(sourceFile));
+        var workspaceFile = Path.Combine(applied.WorkspacePath!, "Retail.SemanticModel", "definition", "tables", "Sales.tmdl");
+        Assert.Contains("\tisHidden", await File.ReadAllTextAsync(workspaceFile));
+        Assert.True(File.Exists(Path.Combine(applied.WorkspacePath!, ".powertools", "audit.json")));
+        Assert.True(Directory.EnumerateFiles(Path.Combine(applied.WorkspacePath!, ".powertools", "backups"), "Sales.tmdl", SearchOption.AllDirectories).Any());
+
+        service = CreateSafeChangeService();
+        var rolledBack = await service.RollbackAsync(plan.PlanId, plan.RollbackPhrase, CancellationToken.None);
+        Assert.Equal("rolled-back", rolledBack.Status);
+        Assert.Equal(sourceBefore, await File.ReadAllBytesAsync(sourceFile));
+        Assert.DoesNotContain("\tisHidden", await File.ReadAllTextAsync(workspaceFile));
+    }
+
+    [Fact]
+    public async Task Safe_change_rejects_blocked_candidates()
+    {
+        var project = CreateMinimalProject();
+        var service = CreateSafeChangeService();
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => service.CreatePlanAsync(
+            project, new[] { new SafeChangeSelection("column", "Sales", "Amount") }, CancellationToken.None));
+
+        Assert.Contains("风险门禁", error.Message);
+    }
+
+    [Fact]
+    public async Task Safe_change_detects_source_drift_before_copying()
+    {
+        var project = CreateMinimalProject();
+        var sourceFile = Path.Combine(project, "Retail.SemanticModel", "definition", "tables", "Sales.tmdl");
+        var service = CreateSafeChangeService();
+        var plan = await service.CreatePlanAsync(project, new[] { new SafeChangeSelection("measure", "Sales", "Revenue") }, CancellationToken.None);
+        await File.AppendAllTextAsync(sourceFile, "\n");
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ApplyAsync(plan.PlanId, plan.ConfirmationPhrase, CancellationToken.None));
+
+        Assert.Contains("发生变化", error.Message);
+        Assert.False(Directory.Exists(Path.Combine(_managedRoot, "workspaces")) && Directory.EnumerateDirectories(Path.Combine(_managedRoot, "workspaces")).Any());
+    }
+
+    [Fact]
+    public async Task Safe_change_rejects_control_directories_inside_source()
+    {
+        var project = CreateMinimalProject();
+        var service = new SafeChangeService(new ProjectSnapshotCache(new PowerBiProjectParser()), Options.Create(new SafeChangeOptions
+        {
+            WorkspaceRoot = Path.Combine(project, ".managed-workspaces"),
+            PlanRoot = Path.Combine(_managedRoot, "plans")
+        }));
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => service.CreatePlanAsync(
+            project, new[] { new SafeChangeSelection("measure", "Sales", "Revenue") }, CancellationToken.None));
+
+        Assert.Contains("不能配置", error.Message);
+    }
+
+    private SafeChangeService CreateSafeChangeService()
+    {
+        var options = Options.Create(new SafeChangeOptions
+        {
+            WorkspaceRoot = Path.Combine(_managedRoot, "workspaces"),
+            PlanRoot = Path.Combine(_managedRoot, "plans"),
+            MaxOperations = 20
+        });
+        return new SafeChangeService(new ProjectSnapshotCache(new PowerBiProjectParser()), options);
+    }
+
     private string CreateMinimalProject()
     {
         var tableRoot = Path.Combine(_root, "Retail.SemanticModel", "definition", "tables");
@@ -172,5 +254,6 @@ public sealed class PowerToolsTests : IDisposable
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, true);
+        if (Directory.Exists(_managedRoot)) Directory.Delete(_managedRoot, true);
     }
 }

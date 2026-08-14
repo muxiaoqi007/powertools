@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.9.1",
+    [string]$Version = "0.10.0",
     [string]$Runtime = "win-x64",
     [switch]$FrameworkDependent,
     [switch]$SkipPublish,

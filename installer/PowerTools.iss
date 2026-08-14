@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.9.1"
+  #define AppVersion "0.10.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\artifacts\desktop-win-x64"

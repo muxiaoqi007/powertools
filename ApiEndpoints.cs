@@ -7,7 +7,7 @@ public static class ApiEndpoints
     public static void MapPowerToolsApi(this WebApplication app, string prefix)
     {
         var api = app.MapGroup(prefix);
-        api.MapGet("/health", () => Results.Ok(new { status = "ok", version = "0.9.1" }));
+        api.MapGet("/health", () => Results.Ok(new { status = "ok", version = "0.10.0" }));
         api.MapGet("/sample", () => Results.Ok(SampleProject.Create()));
         api.MapGet("/live/context", (LivePowerBiModelService live) => Results.Ok(new { available = live.GetStartupContext() is not null }));
         api.MapGet("/live/current", OpenCurrentLiveModel);
@@ -16,6 +16,50 @@ public static class ApiEndpoints
         api.MapGet("/powerquery/{entity}", ExportPowerQuery);
         api.MapPost("/project/open", OpenProject);
         api.MapPost("/project/compare", CompareProjects);
+        api.MapPost("/changes/plan", CreateSafeChangePlan);
+        api.MapPost("/changes/apply", ApplySafeChangePlan);
+        api.MapPost("/changes/rollback", RollbackSafeChangePlan);
+        api.MapGet("/changes/{planId}", GetSafeChangePlan);
+    }
+
+    private static async Task<IResult> CreateSafeChangePlan(SafeChangePlanRequest request, SafeChangeService changes, ProjectPathPolicy paths, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.ProjectPath)) return Results.BadRequest(new { error = "缺少项目路径。" });
+        try { return Results.Ok(await changes.CreatePlanAsync(paths.Resolve(request.ProjectPath), request.Operations ?? Array.Empty<SafeChangeSelection>(), cancellationToken)); }
+        catch (DirectoryNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+        catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        catch (Exception ex) { return Results.Problem(title: "安全修改计划生成失败", detail: ex.Message, statusCode: 500); }
+    }
+
+    private static async Task<IResult> ApplySafeChangePlan(ApplySafeChangeRequest request, SafeChangeService changes, CancellationToken cancellationToken)
+    {
+        try { return Results.Ok(await changes.ApplyAsync(request.PlanId, request.ConfirmationPhrase, cancellationToken)); }
+        catch (KeyNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+        catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
+        catch (Exception ex) { return Results.Problem(title: "安全修改应用失败", detail: ex.Message, statusCode: 500); }
+    }
+
+    private static async Task<IResult> RollbackSafeChangePlan(RollbackSafeChangeRequest request, SafeChangeService changes, CancellationToken cancellationToken)
+    {
+        try { return Results.Ok(await changes.RollbackAsync(request.PlanId, request.ConfirmationPhrase, cancellationToken)); }
+        catch (KeyNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+        catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
+        catch (Exception ex) { return Results.Problem(title: "安全修改回滚失败", detail: ex.Message, statusCode: 500); }
+    }
+
+    private static async Task<IResult> GetSafeChangePlan(string planId, SafeChangeService changes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var plan = await changes.GetPlanAsync(planId, cancellationToken);
+            return plan is null ? Results.NotFound(new { error = $"找不到修改计划：{planId}" }) : Results.Ok(plan);
+        }
+        catch (InvalidDataException ex) { return Results.BadRequest(new { error = ex.Message }); }
     }
 
     private static async Task<IResult> ExportPowerQuery(string entity, string? path, bool? refresh, ProjectSnapshotCache cache, ProjectPathPolicy paths, PowerQueryExportService exporter, CancellationToken cancellationToken)

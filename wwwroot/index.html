@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="compare.css" />
   <link rel="stylesheet" href="optimizer.css" />
   <link rel="stylesheet" href="report-quality.css" />
+  <link rel="stylesheet" href="safe-changes.css" />
   <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
 </head>
 <body>
@@ -27,6 +28,7 @@
           <button class="nav-item nav-child" data-view="calcgroups"><span>∑</span>计算组</button>
           <button class="nav-item nav-child" data-view="dependencies"><span>⌁</span>模型依赖</button>
           <button class="nav-item nav-child" data-view="optimizer"><span>◇</span>模型优化</button>
+          <button class="nav-item nav-child" data-view="safechanges"><span>✓</span>安全修改</button>
         </div>
         <button class="nav-item" data-view="relationships"><span>⌘</span>关系</button>
         <button class="nav-item" data-view="security"><span>♢</span>安全角色</button>
@@ -80,6 +82,23 @@
         <div class="optimizer-tabs"><button data-optimizer-tab="removal" class="active">删除候选</button><button data-optimizer-tab="storage">VertiPaq 存储</button><button data-optimizer-tab="dax">度量优化</button></div>
         <div id="optimizerFilters" class="filter-pills optimizer-filters"></div>
         <div id="optimizerList" class="optimizer-list"></div>
+      </section>
+
+      <section id="safechanges" class="view">
+        <div class="section-head"><div><p class="eyebrow">SAFE CHANGE WORKSPACE</p><h1>安全修改与回滚</h1><p class="muted">把候选对象隔离到受控副本中验证；源项目永不写入，对象永不直接删除。</p></div><button class="button secondary" data-jump="optimizer">返回模型优化</button></div>
+        <div class="safe-guardrail"><strong>三道门禁</strong><span>仅允许 TMDL 候选对象</span><span>源项目指纹必须一致</span><span>输入完整确认短语后才执行</span></div>
+        <div id="safeChangeStats" class="mini-stats"></div>
+        <div class="safe-change-grid">
+          <article class="panel safe-candidate-panel">
+            <div class="panel-title"><div><p class="eyebrow">1 · SELECT</p><h2>选择隔离候选</h2></div><button id="safeSelectAll" class="text-button">选择全部</button></div>
+            <div id="safeCandidateList" class="safe-candidate-list"></div>
+            <button id="safePlanButton" class="button primary safe-wide-button">生成修改计划</button>
+          </article>
+          <article class="panel safe-plan-panel">
+            <div class="panel-title"><div><p class="eyebrow">2 · REVIEW & APPLY</p><h2>计划、审计与回滚</h2></div><span id="safePlanStatus" class="badge">未生成</span></div>
+            <div id="safePlanDetail" class="safe-plan-detail"><div class="empty-state">先从左侧选择候选对象并生成计划。</div></div>
+          </article>
+        </div>
       </section>
 
       <section id="relationships" class="view">
@@ -154,6 +173,7 @@
   <script src="bookmarks.js"></script>
   <script src="compare.js"></script>
   <script src="optimizer.js"></script>
+  <script src="safe-changes.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

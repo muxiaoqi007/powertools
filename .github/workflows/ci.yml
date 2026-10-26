@@ -32,3 +32,7 @@ jobs:
           node --check wwwroot/optimizer.js
           node --check wwwroot/safe-changes.js
           node --check wwwroot/updates.js
+          node --check wwwroot/experience.js
+          node --check wwwroot/usage.js
+      - name: Test frontend interactions
+        run: node --test tests/frontend-interactions.test.cjs

@@ -36,6 +36,7 @@ jobs:
         run: |
           dotnet restore PowerTools.sln
           dotnet test PowerTools.sln -c Release --verbosity normal
+          node --test tests/frontend-interactions.test.cjs
       - name: Download baseline portable package
         if: ${{ inputs.base_version != '' }}
         shell: powershell

@@ -109,6 +109,8 @@ PowerToolsEntity(PowerToolsUrl, PowerBiProjectPath, "bookmark-states")
 | `pages` | 报表页面 |
 | `visuals` | 页面视觉对象和坐标 |
 | `visual-fields` | 视觉对象字段绑定 |
+| `page-usage` | 页面字段/度量使用、筛选器和覆盖率汇总 |
+| `object-usage` | 字段/度量使用页面、使用状态和引用次数 |
 | `report-quality` | 报表质量覆盖率、筛选器和特殊页面汇总 |
 | `bookmarks` | 书签定义 |
 | `bookmark-groups` | 书签组 |
@@ -122,6 +124,8 @@ PowerToolsEntity(PowerToolsUrl, PowerBiProjectPath, "bookmark-states")
 | `warnings` | 解析提示 |
 
 `pages` 额外提供 `filterCount`、`drillthroughFilterCount` 和 `isTooltip`；`visuals` 提供视觉筛选器、标题、替代文本、Tooltip、钻取交互和视觉组属性；`issues` 的 `targetId` 是可选的视觉对象定位键。
+
+`object-usage` 的 `usageStatus` 取值为 `page`（页面使用）、`model`（仅模型使用）或 `unused`（未引用）；`page-usage` 的 `titleCoverage` 和 `altTextCoverage` 是 0–100 的百分比。使用统计基于视觉对象字段绑定，页面级和报表级筛选器字段暂未解析。
 
 也可以访问以下地址查看实时实体目录和列名：
 

@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0a0c10" />
   <title>PowerTools · Power BI 模型管理</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="advanced.css" />
-  <link rel="stylesheet" href="dependencies.css" />
-  <link rel="stylesheet" href="bookmarks.css" />
-  <link rel="stylesheet" href="compare.css" />
-  <link rel="stylesheet" href="optimizer.css" />
-  <link rel="stylesheet" href="report-quality.css" />
-  <link rel="stylesheet" href="safe-changes.css" />
-  <link rel="stylesheet" href="updates.css" />
+  <link rel="stylesheet" href="styles.css?v=20261026b" />
+  <link rel="stylesheet" href="advanced.css?v=20261026b" />
+  <link rel="stylesheet" href="dependencies.css?v=20261026b" />
+  <link rel="stylesheet" href="bookmarks.css?v=20261026b" />
+  <link rel="stylesheet" href="compare.css?v=20261026b" />
+  <link rel="stylesheet" href="optimizer.css?v=20261026b" />
+  <link rel="stylesheet" href="report-quality.css?v=20261026b" />
+  <link rel="stylesheet" href="safe-changes.css?v=20261026b" />
+  <link rel="stylesheet" href="updates.css?v=20261026b" />
+  <link rel="stylesheet" href="usage.css?v=20261026b" />
+  <link rel="stylesheet" href="experience.css?v=20261026b" />
   <style>.bookmark-warning{padding:12px 22px;background:#2a2116;border-bottom:1px solid #564227;color:#e8bd75;font-size:10px}.bookmark-detail-head .button:disabled{cursor:not-allowed;opacity:.5}</style>
 </head>
 <body>
@@ -22,9 +24,9 @@
       <div class="brand"><span class="brand-mark">P</span><div><b>PowerTools</b><small>POWER BI STUDIO</small></div></div>
       <nav id="nav" aria-label="主导航">
         <button class="nav-item active" data-view="overview"><span>⌂</span>概览</button>
-        <button class="nav-item nav-parent active" data-model-toggle="true" aria-expanded="true"><span>▦</span>模型<i>⌄</i></button>
+        <button class="nav-item nav-parent" data-model-toggle="true" aria-expanded="true"><span>▦</span>模型<i>⌄</i></button>
         <div class="nav-children open" id="modelNavChildren">
-          <button class="nav-item nav-child active" data-view="model"><span>▫</span>模型对象</button>
+          <button class="nav-item nav-child" data-view="model"><span>▫</span>模型对象</button>
           <button class="nav-item nav-child" data-view="dax"><span>ƒ</span>度量值</button>
           <button class="nav-item nav-child" data-view="calcgroups"><span>∑</span>计算组</button>
           <button class="nav-item nav-child" data-view="dependencies"><span>⌁</span>模型依赖</button>
@@ -37,6 +39,7 @@
         <button class="nav-item" data-view="layout"><span>▣</span>页面布局</button>
         <button class="nav-item" data-view="compare"><span>⇄</span>版本比较</button>
         <button class="nav-item" data-view="quality"><span>◇</span>质量检查</button>
+        <button class="nav-item" data-view="usage"><span>▤</span>使用情况</button>
       </nav>
       <div class="sidebar-footer">
         <div class="status-dot"><i></i><span>本地分析模式</span></div>
@@ -46,17 +49,19 @@
 
     <main>
       <header class="topbar">
-        <div class="crumb"><span id="projectName">未加载项目</span><small id="projectFormat">POWER BI PROJECT</small></div>
+        <div class="crumb"><span id="projectName">未加载项目</span><small id="projectFormat">POWER BI PROJECT</small><span id="sourceBadge" class="source-badge">等待加载</span></div>
         <div class="project-loader">
           <button id="updateButton" class="button secondary update-button"><i></i><span>检查更新</span></button>
           <button id="liveButton" class="button secondary" hidden>读取当前 Power BI</button>
-          <input id="pathInput" aria-label="项目目录" placeholder="输入 .pbip 项目、.Report 或 .SemanticModel 目录" />
-          <button id="openButton" class="button secondary">打开目录</button>
-          <button id="sampleButton" class="button primary">加载示例</button>
+          <button id="refreshButton" class="button secondary" title="重新扫描当前项目">重新扫描</button>
+          <button id="projectButton" class="button primary">打开项目</button>
+          <button id="sampleButton" class="button secondary">体验示例</button>
         </div>
       </header>
 
       <div id="toast" role="status" aria-live="polite"></div>
+      <div id="loadStatus" class="load-status" role="status" aria-live="polite" hidden></div>
+      <div id="sourceNotice" class="source-notice" hidden></div>
 
       <section id="overview" class="view active">
         <div class="hero-row">
@@ -65,7 +70,7 @@
         </div>
         <div id="summaryCards" class="metric-grid"></div>
         <div class="dashboard-grid">
-          <article class="panel model-health"><div class="panel-title"><div><p class="eyebrow">MODEL HEALTH</p><h2>模型健康度</h2></div><span id="healthBadge" class="badge good">良好</span></div><div class="health-content"><div id="healthRing" class="health-ring"><strong>—</strong><span>综合评分</span></div><div id="healthBreakdown" class="health-breakdown"></div></div></article>
+          <article class="panel model-health"><div class="panel-title"><div><p class="eyebrow">MODEL HEALTH</p><h2>模型健康度</h2></div><span id="healthBadge" class="badge good">良好</span></div><div class="health-content"><div id="healthRing" class="health-ring"><strong>—</strong><span>规则参考分</span></div><div id="healthBreakdown" class="health-breakdown"></div></div><p class="score-note">评分按规则数量扣分，仅供排查参考；不代表性能测试或模型正确性认证。</p><button id="healthIssues" class="text-button health-issues">查看问题明细 →</button></article>
           <article class="panel"><div class="panel-title"><div><p class="eyebrow">REPORT PAGES</p><h2>页面与视觉对象</h2></div><button class="text-button" data-jump="layout">打开画布 →</button></div><div id="pageOverview" class="page-overview"></div></article>
           <article class="panel wide"><div class="panel-title"><div><p class="eyebrow">MODEL INVENTORY</p><h2>对象分布</h2></div><button class="text-button" data-jump="model">浏览模型 →</button></div><div id="inventory" class="inventory"></div></article>
           <article class="panel"><div class="panel-title"><div><p class="eyebrow">ATTENTION</p><h2>需要关注</h2></div><button class="text-button" data-jump="quality">全部问题 →</button></div><div id="attention" class="attention-list"></div></article>
@@ -74,13 +79,14 @@
 
       <section id="model" class="view">
         <div class="section-head"><div><p class="eyebrow">SEMANTIC MODEL</p><h1>模型资源管理器</h1><p class="muted">查看表、列、度量值、层次结构与分区定义。</p></div><label class="search-box">⌕<input id="modelSearch" placeholder="搜索表、字段或度量值" /></label></div>
+        <div class="result-toolbar"><span id="modelResultCount" role="status"></span></div>
         <div class="model-layout"><div id="tableList" class="table-list"></div><div id="tableDetail" class="panel table-detail"></div></div>
       </section>
 
       <section id="optimizer" class="view">
         <div class="section-head optimizer-head"><div><p class="eyebrow">MODEL OPTIMIZER</p><h1>模型质量与优化</h1><p class="muted">基于当前项目内的依赖、报表、关系与安全元数据生成删除候选和 DAX 静态优化建议。</p></div><label class="search-box">⌕<input id="optimizerSearch" placeholder="搜索表、字段、度量值或规则" /></label></div>
         <div id="optimizerStats" class="mini-stats"></div>
-        <div class="optimizer-notice">只提供分析建议，不会直接删除或修改模型。实时模式会把 VertiPaq 占用作为回收收益证据，但“候选”仍不等于可自动删除；删除前需检查外部报表、Excel/XMLA、动态引用和刷新流程。</div>
+        <div id="optimizerNotice" class="optimizer-notice">只提供分析建议，不会直接删除或修改模型。实时模式会把 VertiPaq 占用作为回收收益证据，但“候选”仍不等于可自动删除；删除前需检查外部报表、Excel/XMLA、动态引用和刷新流程。</div>
         <div class="optimizer-tabs"><button data-optimizer-tab="removal" class="active">删除候选</button><button data-optimizer-tab="storage">VertiPaq 存储</button><button data-optimizer-tab="dax">度量优化</button></div>
         <div id="optimizerFilters" class="filter-pills optimizer-filters"></div>
         <div id="optimizerList" class="optimizer-list"></div>
@@ -93,6 +99,8 @@
         <div class="safe-change-grid">
           <article class="panel safe-candidate-panel">
             <div class="panel-title"><div><p class="eyebrow">1 · SELECT</p><h2>选择隔离候选</h2></div><button id="safeSelectAll" class="text-button">选择全部</button></div>
+            <label class="search-box safe-candidate-search">⌕<input id="safeCandidateSearch" placeholder="搜索表、字段或度量值" /></label>
+            <p id="safeCandidateNote" class="safe-candidate-note" hidden></p>
             <div id="safeCandidateList" class="safe-candidate-list"></div>
             <button id="safePlanButton" class="button primary safe-wide-button">生成修改计划</button>
           </article>
@@ -121,15 +129,16 @@
       </section>
 
       <section id="security" class="view">
-        <div class="section-head"><div><p class="eyebrow">MODEL SECURITY</p><h1>RLS / OLS 安全角色</h1><p class="muted">审查角色权限、表级筛选表达式和对象级权限。</p></div></div>
+        <div class="section-head"><div><p class="eyebrow">MODEL SECURITY</p><h1>RLS / OLS 安全角色</h1><p class="muted">审查角色权限、表级筛选表达式和对象级权限。</p></div><label class="search-box">⌕<input id="securitySearch" placeholder="搜索角色、表或 RLS 表达式" /></label></div>
         <div id="securityStats" class="mini-stats"></div>
+        <div id="securityResultCount" class="result-toolbar" role="status"></div>
         <div id="roleList" class="role-list"></div>
       </section>
 
       <section id="dependencies" class="view">
-        <div class="section-head dependency-head"><div><p class="eyebrow">MODEL DEPENDENCIES</p><h1>模型依赖关系</h1><p class="muted">追踪度量值、字段和计算项的上下游依赖与变更影响范围。</p></div><div class="dependency-controls"><label class="search-box">⌕<input id="dependencySearch" placeholder="搜索度量值、字段或计算项" /></label><select id="dependencyDirection" aria-label="依赖方向"><option value="both">上下游</option><option value="upstream">上游依赖</option><option value="downstream">下游影响</option></select><select id="dependencyDepth" aria-label="展开层级"><option value="1">1 层</option><option value="2" selected>2 层</option><option value="3">3 层</option><option value="99">全部</option></select><button id="dependencyFit" class="button secondary">适合画布</button></div></div>
+        <div class="section-head dependency-head"><div><p class="eyebrow">MODEL DEPENDENCIES</p><h1>模型依赖关系</h1><p class="muted">追踪度量值、字段和计算项的上下游依赖与变更影响范围。</p></div><div class="dependency-controls"><label class="search-box">⌕<input id="dependencySearch" placeholder="搜索度量值、字段或计算项" /></label><select id="dependencyDirection" aria-label="依赖方向"><option value="both">上下游</option><option value="upstream">上游依赖</option><option value="downstream">下游影响</option></select><select id="dependencyDepth" aria-label="展开层级"><option value="1" selected>1 层</option><option value="2">2 层</option><option value="3">3 层</option><option value="99">全部</option></select><button id="dependencyFit" class="button secondary">适合画布</button><button id="dependencyCenter" class="button secondary">聚焦所选</button></div></div>
         <div class="dependency-workbench">
-          <aside class="dependency-list-panel"><div class="dependency-list-title"><b>模型对象</b><span id="dependencyObjectCount">0</span></div><div id="dependencyObjectList" class="dependency-object-list"></div></aside>
+          <aside class="dependency-list-panel"><div class="dependency-list-title"><b>模型对象</b><span id="dependencyObjectCount">0</span></div><select id="dependencyTypeFilter" aria-label="对象类型"><option value="all">全部类型</option><option value="measure">度量值</option><option value="column">字段</option><option value="calculationItem">计算项</option></select><div id="dependencyObjectList" class="dependency-object-list"></div></aside>
           <div class="dependency-graph-panel"><svg id="dependencyGraph" role="img" aria-label="模型依赖关系图"><defs><marker id="arrowDependency" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs><g id="dependencyViewport"><g id="dependencyEdges"></g><g id="dependencyNodes"></g></g></svg><div id="dependencyEmpty" class="dependency-empty"></div><div class="dependency-legend"><span><i class="legend-measure"></i>度量值</span><span><i class="legend-column"></i>字段</span><span><i class="legend-calc"></i>计算项</span><span>拖动画布 · 滚轮缩放 · 点击节点聚焦</span></div></div>
           <aside id="dependencyInspector" class="dependency-inspector"></aside>
         </div>
@@ -146,6 +155,8 @@
       </section>
 
       <section id="layout" class="view">
+        <p class="score-note layout-note">这是报表结构预览，展示对象位置、层级及书签显隐；图表数据和样式请在 Power BI Desktop 中查看。</p>
+        <div id="layoutPageNotice" class="layout-page-notice" hidden></div>
         <div class="section-head layout-head"><div><p class="eyebrow">REPORT CANVAS</p><h1>页面布局</h1><p class="muted">按 Power BI 原始坐标和比例还原视觉对象的位置、尺寸与层级。</p></div><div class="layout-controls"><label>页面 <select id="pageSelect"></select></label><label>书签 <select id="bookmarkSelect"><option value="">原始页面</option></select></label><label>缩放 <select id="zoomSelect"><option value="fit">适合窗口</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option><option value="1.25">125%</option></select></label><button id="toggleHidden" class="button secondary active">显示隐藏对象</button></div></div>
         <div class="layout-workbench">
           <div class="canvas-stage"><div id="canvasFrame" class="canvas-frame"><div id="reportCanvas" class="report-canvas"></div></div></div>
@@ -156,7 +167,8 @@
 
       <section id="compare" class="view">
         <div class="section-head"><div><p class="eyebrow">PROJECT DIFF</p><h1>版本比较</h1><p class="muted">比较两个 PBIP 项目目录，识别模型、DAX、安全、页面、视觉对象与书签变更。</p></div></div>
-        <div class="compare-form panel"><label>基线项目<input id="compareBaseline" placeholder="旧版本或 Git 工作树目录" /></label><label>当前项目<input id="compareCurrent" placeholder="新版本项目目录" /></label><button id="compareButton" class="button primary">开始比较</button></div>
+        <div class="compare-form panel"><label>基线项目（变更前）<input id="compareBaseline" placeholder="旧版本或 Git 工作树目录" /><button class="text-button" data-browse="compareBaseline">选择目录…</button></label><label>当前项目（变更后）<input id="compareCurrent" placeholder="新版本项目目录" /><button class="text-button" data-browse="compareCurrent">选择目录…</button></label><div class="compare-actions"><button id="compareButton" class="button primary">开始比较</button><button id="compareSwap" class="button secondary">交换项目</button></div></div>
+        <div id="compareStatus" class="form-feedback" role="status" hidden></div>
         <div id="compareStats" class="mini-stats"></div>
         <div class="compare-toolbar"><label class="search-box">⌕<input id="compareSearch" placeholder="搜索对象类型或名称" /></label><div id="compareFilters" class="filter-pills"><button data-change="all" class="active">全部</button><button data-change="added">新增</button><button data-change="removed">删除</button><button data-change="modified">修改</button></div></div>
         <div id="compareResult" class="compare-result"></div>
@@ -167,9 +179,48 @@
         <div id="qualityStats" class="mini-stats"></div>
         <div id="qualityCoverage" class="quality-coverage"></div>
         <div class="quality-toolbar"><label class="search-box">⌕<input id="qualitySearch" placeholder="搜索问题、对象或规则" /></label><label>页面 <select id="qualityPage"><option value="all">全部页面</option></select></label><label>类别 <select id="qualityCategory"><option value="all">全部类别</option></select></label></div>
+        <div class="result-toolbar"><span id="qualityResultCount" role="status"></span><button id="qualityReset" class="text-button">清除所有筛选</button></div>
         <div id="issueList" class="issue-list"></div>
+        <button id="qualityMore" class="button secondary quality-more" hidden>显示更多</button>
+      </section>
+
+      <section id="usage" class="view">
+        <div class="section-head usage-head">
+          <div><p class="eyebrow">PAGE &amp; OBJECT USAGE</p><h1>使用情况看板</h1><p class="muted">汇总页面与视觉对象的字段/度量使用，反向查看每个对象被哪些页面使用，并识别未引用对象。</p></div>
+          <label class="search-box">⌕<input id="usageSearch" placeholder="搜索页面、表、字段或度量值" /></label>
+        </div>
+        <div id="usageStats" class="mini-stats"></div>
+        <div id="usageTabs" class="usage-tabs" role="tablist">
+          <button data-usage-tab="pages" class="active" role="tab" aria-selected="true">页面视角</button>
+          <button data-usage-tab="objects" role="tab" aria-selected="false">对象视角</button>
+        </div>
+        <div id="usagePageFilters" class="usage-filters">
+          <label>页面类型 <select id="usagePageType"><option value="all">全部</option><option value="normal">普通</option><option value="hidden">隐藏</option><option value="tooltip">Tooltip</option><option value="drillthrough">钻取</option></select></label>
+          <label>排序 <select id="usagePageSort"><option value="visuals">视觉对象数</option><option value="columns">字段数</option><option value="measures">度量值数</option><option value="filters">筛选器数</option><option value="name">页面名称</option></select></label>
+        </div>
+        <div id="usageObjectFilters" class="usage-filters" hidden>
+          <label>对象类型 <select id="usageObjectType"><option value="all">全部</option><option value="measure">度量值</option><option value="column">字段</option></select></label>
+          <label>使用状态 <select id="usageStatus"><option value="all">全部</option><option value="page">页面使用</option><option value="model">仅模型使用</option><option value="unused">未引用</option></select></label>
+          <label>所属表 <select id="usageTable"><option value="all">全部表</option></select></label>
+          <label>排序 <select id="usageObjectSort"><option value="pages">页面数</option><option value="visuals">视觉引用</option><option value="status">使用状态</option><option value="name">对象名称</option></select></label>
+        </div>
+        <p id="usageNotice" class="score-note usage-note"></p>
+        <div class="result-toolbar"><span id="usageResultCount" role="status"></span><button id="usageReset" class="text-button">清除所有筛选</button></div>
+        <div id="usageContent"></div>
       </section>
     </main>
+  </div>
+  <div id="projectModal" class="update-modal" hidden>
+    <div class="update-dialog project-dialog" role="dialog" aria-modal="true" aria-labelledby="projectTitle">
+      <div class="update-dialog-head"><div><p class="eyebrow">本地项目</p><h2 id="projectTitle">打开 Power BI 项目</h2></div><button id="projectClose" aria-label="关闭项目窗口">×</button></div>
+      <p class="muted">选择 PBIP 项目目录、.Report 或 .SemanticModel 目录，也可输入 .pbip 文件路径。</p>
+      <label class="path-label" for="pathInput">项目路径</label>
+      <div class="path-entry"><input id="pathInput" aria-label="项目路径" aria-describedby="projectHelp" placeholder="例如 D:\\Projects\\Retail\\Retail.pbip" /><button class="button secondary" data-browse="pathInput">选择目录…</button><button class="button secondary" data-browse="pathInput" data-browse-kind="file">选择文件…</button></div>
+      <p id="projectHelp" class="score-note">PBIX 文件请在 Power BI Desktop 中打开，再从“外部工具”启动 PowerTools。</p>
+      <div id="projectFeedback" class="form-feedback" role="status" hidden></div>
+      <h3 class="recent-title">最近打开</h3><div id="recentProjects" class="recent-projects"></div>
+      <div class="update-dialog-actions"><button id="projectCancel" class="button secondary">取消</button><button id="openButton" class="button primary">打开并分析</button></div>
+    </div>
   </div>
   <div id="updateModal" class="update-modal" hidden>
     <div class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
@@ -178,12 +229,14 @@
       <div class="update-dialog-actions"><button id="updateLater" class="button secondary">稍后</button><button id="updateAction" class="button primary">检查更新</button></div>
     </div>
   </div>
-  <script src="dependencies.js"></script>
-  <script src="bookmarks.js"></script>
-  <script src="compare.js"></script>
-  <script src="optimizer.js"></script>
-  <script src="safe-changes.js"></script>
-  <script src="updates.js"></script>
-  <script src="app.js"></script>
+  <script src="dependencies.js?v=20261026b"></script>
+  <script src="bookmarks.js?v=20261026b"></script>
+  <script src="compare.js?v=20261026b"></script>
+  <script src="optimizer.js?v=20261026b"></script>
+  <script src="safe-changes.js?v=20261026b"></script>
+  <script src="usage.js?v=20261026b"></script>
+  <script src="updates.js?v=20261026b"></script>
+  <script src="experience.js?v=20261026b"></script>
+  <script src="app.js?v=20261026b"></script>
 </body>
 </html>

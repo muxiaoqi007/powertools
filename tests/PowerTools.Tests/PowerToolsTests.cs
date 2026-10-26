@@ -58,6 +58,22 @@ public sealed class PowerToolsTests : IDisposable
     }
 
     [Fact]
+    public void Usage_power_query_entities_export_page_and_object_rows()
+    {
+        var exporter = new PowerQueryExportService();
+        var sample = SampleProject.Create();
+
+        var pages = exporter.Export(sample, "page-usage");
+        var objects = exporter.Export(sample, "object-usage");
+
+        Assert.Contains("topObjects", pages.Columns);
+        Assert.NotEmpty(pages.Rows);
+        Assert.Contains("usageStatus", objects.Columns);
+        Assert.NotEmpty(objects.Rows);
+        Assert.All(objects.Rows, row => Assert.Contains((string)row["usageStatus"]!, new[] { "page", "model", "unused" }));
+    }
+
+    [Fact]
     public void Comparison_detects_added_removed_and_modified_objects()
     {
         var baseline = SampleProject.Create();
@@ -93,6 +109,21 @@ public sealed class PowerToolsTests : IDisposable
         File.AppendAllText(Path.Combine(project, "Retail.SemanticModel", "definition", "tables", "Sales.tmdl"), Environment.NewLine + "\tcolumn Extra\n\t\tdataType: string\n");
         var changed = await cache.GetAsync(project);
         Assert.NotEqual(first[0].ScannedAt, changed.ScannedAt);
+    }
+
+    [Fact]
+    public async Task Cache_ignores_vcs_and_build_directories_in_project_signature()
+    {
+        var project = CreateMinimalProject();
+        var cache = new ProjectSnapshotCache(new PowerBiProjectParser());
+        var first = await cache.GetAsync(project);
+
+        var git = Path.Combine(project, ".git");
+        Directory.CreateDirectory(git);
+        await File.WriteAllTextAsync(Path.Combine(git, "index"), "vcs metadata");
+        var second = await cache.GetAsync(project);
+
+        Assert.Equal(first.ScannedAt, second.ScannedAt);
     }
 
     [Fact]
@@ -161,6 +192,49 @@ public sealed class PowerToolsTests : IDisposable
         var result = ModelOptimizationAnalyzer.Analyze(snapshot);
         Assert.Contains(result.Suggestions, x => x.RuleId == "DAX-002" && x.MeasureName == "Unsafe Ratio");
         Assert.Contains(result.Suggestions, x => x.RuleId == "DAX-003" && x.MeasureName == "Filtered");
+    }
+
+    [Fact]
+    public void Usage_analysis_classifies_page_model_and_unused_objects()
+    {
+        var snapshot = CreateUsageSnapshot();
+        var usage = AnalyzeUsage(snapshot);
+
+        var page = Assert.Single(usage.Pages);
+        Assert.Equal(1, page.VisualCount);
+        Assert.Equal(1, page.DataVisualCount);
+        Assert.Equal(1, page.ColumnCount);
+        Assert.Equal(1, page.MeasureCount);
+        Assert.Equal(1, page.TitleCount);
+        Assert.Equal(0, page.AltTextCount);
+        Assert.Equal(1, page.FilterCount);
+        Assert.Equal(1, page.PageFilterCount);
+        Assert.Equal(0, page.VisualFilterCount);
+
+        Assert.Equal("page", FindUsageObject(usage, "Sales", "Amount").UsageStatus);
+        Assert.Equal("page", FindUsageObject(usage, "Sales", "Revenue").UsageStatus);
+        Assert.Equal("model", FindUsageObject(usage, "Sales", "ModelColumn").UsageStatus);
+        Assert.Equal("unused", FindUsageObject(usage, "Sales", "UnusedColumn").UsageStatus);
+        Assert.Equal("unused", FindUsageObject(usage, "Sales", "UnusedMeasure").UsageStatus);
+        Assert.Equal("unused", FindUsageObject(usage, "Sales", "ModelOnlyMeasure").UsageStatus);
+
+        Assert.Equal(1, usage.Summary.ReferencedColumnCount);
+        Assert.Equal(1, usage.Summary.ReferencedMeasureCount);
+        Assert.Equal(1, usage.Summary.ModelOnlyObjectCount);
+        Assert.Equal(3, usage.Summary.UnusedObjectCount);
+        Assert.Equal(1, usage.Summary.UnresolvedReferenceCount);
+        Assert.Contains("[Unused]", usage.Summary.UnresolvedReferences);
+    }
+
+    [Fact]
+    public void Usage_analysis_keeps_ambiguous_bare_column_references_unresolved()
+    {
+        var snapshot = CreateUsageSnapshot(withAmbiguousName: true);
+        var usage = AnalyzeUsage(snapshot);
+
+        Assert.Equal(1, usage.Summary.UnresolvedReferenceCount);
+        Assert.Contains("Name", usage.Summary.UnresolvedReferences);
+        Assert.Equal(0, usage.Objects.Count(item => item.ObjectName == "Name" && item.VisualCount > 0));
     }
 
     [Fact]
@@ -379,6 +453,56 @@ public sealed class PowerToolsTests : IDisposable
             MaxOperations = 20
         });
         return new SafeChangeService(new ProjectSnapshotCache(new PowerBiProjectParser()), options);
+    }
+
+    private static UsageAnalysis AnalyzeUsage(ProjectSnapshot snapshot)
+    {
+        var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
+        var optimized = snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        return UsageAnalyzer.Analyze(optimized);
+    }
+
+    private static ObjectUsage FindUsageObject(UsageAnalysis usage, string tableName, string objectName) =>
+        Assert.Single(usage.Objects.Where(item => item.TableName == tableName && item.ObjectName == objectName));
+
+    private static ProjectSnapshot CreateUsageSnapshot(bool withAmbiguousName = false)
+    {
+        var salesColumns = new List<ModelColumn>
+        {
+            new("Amount", "decimal", false, false, null, null),
+            new("ModelColumn", "string", false, false, null, null),
+            new("UnusedColumn", "string", false, false, null, null)
+        };
+        if (withAmbiguousName) salesColumns.Add(new ModelColumn("Name", "string", false, false, null, null));
+        var tables = new List<ModelTable>
+        {
+            new("Sales", null, false, salesColumns,
+                new[]
+                {
+                    new ModelMeasure("Revenue", "SUM(Sales[Amount])", null, false, null, null),
+                    new ModelMeasure("ModelOnlyMeasure", "SUM(Sales[ModelColumn])", null, false, null, null),
+                    new ModelMeasure("UnusedMeasure", "1", null, false, null, null)
+                },
+                Array.Empty<ModelHierarchy>(), Array.Empty<ModelPartition>())
+        };
+        if (withAmbiguousName)
+            tables.Add(new ModelTable("DimName", null, false,
+                new[] { new ModelColumn("Name", "string", false, false, null, null) },
+                Array.Empty<ModelMeasure>(), Array.Empty<ModelHierarchy>(), Array.Empty<ModelPartition>()));
+
+        var fields = withAmbiguousName
+            ? new[] { "Sales[Revenue]", "Name" }
+            : new[] { "Sales[Revenue]", "Amount", "[Unused]" };
+        var visual = new ReportVisual("v1", "收入", "card", 0, 0, 200, 100, 1, 0, false, fields, "visual.json", 0, true, false);
+        var page = new ReportPage("page1", "首页", 1280, 720, false, null, new[] { visual }, 1, 0, false);
+        var dependencies = new[]
+        {
+            new ModelDependency("measure:Sales:Revenue", "Sales[Revenue]", "measure", "column:Sales:Amount", "Sales[Amount]", "column", "Sales[Amount]"),
+            new ModelDependency("measure:Sales:ModelOnlyMeasure", "Sales[ModelOnlyMeasure]", "measure", "column:Sales:ModelColumn", "Sales[ModelColumn]", "column", "Sales[ModelColumn]")
+        };
+        return new ProjectSnapshot("Usage Test", "C:\\usage", "TMDL", DateTimeOffset.Now, tables, Array.Empty<ModelRelationship>(),
+            Array.Empty<CalculationGroup>(), Array.Empty<SecurityRole>(), dependencies, Array.Empty<ReportBookmark>(), Array.Empty<BookmarkGroup>(),
+            new[] { page }, Array.Empty<QualityIssue>(), Array.Empty<string>());
     }
 
     private string CreateMinimalProject()

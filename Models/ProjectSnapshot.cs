@@ -20,6 +20,7 @@ public sealed record ProjectSnapshot(
     public IReadOnlyList<MeasureOptimizationSuggestion> OptimizationSuggestions { get; init; } = Array.Empty<MeasureOptimizationSuggestion>();
     public LiveModelInfo? LiveModel { get; init; }
     public IReadOnlyList<ModelStorageMetric> StorageMetrics { get; init; } = Array.Empty<ModelStorageMetric>();
+    public UsageAnalysis? Usage { get; init; }
     public int ReportFilterCount { get; init; }
 
     public object ReportQuality => new

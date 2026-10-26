@@ -47,7 +47,8 @@ public sealed class LivePowerBiModelService
             tables, relationships, calculationGroups, roles, dependencies, Array.Empty<ReportBookmark>(), Array.Empty<BookmarkGroup>(),
             Array.Empty<ReportPage>(), issues, warnings) { LiveModel = info, StorageMetrics = storage };
         var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
-        return snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        var optimized = snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        return optimized with { Usage = UsageAnalyzer.Analyze(optimized) };
     }
 
     private static ModelTable MapTable(Tom.Table table) => new(

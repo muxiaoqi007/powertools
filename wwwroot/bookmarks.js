@@ -2,7 +2,7 @@ function allBookmarks(){return state.data?.bookmarks||[]}
 function currentBookmark(){return allBookmarks().find(x=>x.name===state.selectedBookmark)||null}
 function bookmarkPage(bookmark){return state.data?.pages?.find(x=>x.name===bookmark?.activePage)||null}
 function bookmarkPageName(bookmark){const page=bookmarkPage(bookmark);return page?.displayName||(bookmark?.activePage?`${bookmark.activePage}（页面不存在）`:'未指定页面')}
-function bookmarkStateFor(pageName,visualName){const bookmark=currentBookmark();if(!bookmark)return null;return bookmark.visualStates?.find(x=>x.pageName===pageName&&x.visualName===visualName)||null}
+function bookmarkStateFor(pageName,visualName){const bookmark=allBookmarks().find(x=>x.name===state.layoutBookmark);if(!bookmark)return null;return bookmark.visualStates?.find(x=>x.pageName===pageName&&x.visualName===visualName)||null}
 function bookmarkVisualHidden(pageName,visual){const value=bookmarkStateFor(pageName,visual.name)?.isHidden;return value===null||value===undefined?visual.isHidden:value}
 
 function renderBookmarks(){
@@ -21,7 +21,7 @@ function renderBookmarkTree(){
   const match=bookmark=>(bookmark.displayName+' '+bookmark.name+' '+bookmarkPageName(bookmark)).toLowerCase().includes(query);
   const row=bookmark=>`<button class="bookmark-row ${bookmark.name===state.selectedBookmark?'active':''}" data-bookmark="${escapeHtml(bookmark.name)}"><span class="bookmark-icon">◆</span><span><b>${escapeHtml(bookmark.displayName)}</b><small>${escapeHtml(bookmarkPageName(bookmark))}</small></span><i>${bookmark.visualStates?.length||0}</i></button>`;
   let html='';
-  for(const group of groups){const children=(group.children||[]).map(x=>byName.get(x)).filter(Boolean).filter(match);if(query&&!children.length&&!group.displayName.toLowerCase().includes(query))continue;const open=query||children.some(x=>x.name===state.selectedBookmark);html+=`<details class="bookmark-group" ${open?'open':''}><summary><span>▾</span><b>${escapeHtml(group.displayName)}</b><small>${children.length}</small></summary>${children.map(row).join('')}</details>`}
+  for(const group of groups){const children=(group.children||[]).map(x=>byName.get(x)).filter(Boolean).filter(bookmark=>match(bookmark)||group.displayName.toLowerCase().includes(query));if(query&&!children.length&&!group.displayName.toLowerCase().includes(query))continue;const open=query||children.some(x=>x.name===state.selectedBookmark);html+=`<details class="bookmark-group" ${open?'open':''}><summary><span>▾</span><b>${escapeHtml(group.displayName)}</b><small>${children.length}</small></summary>${children.map(row).join('')}</details>`}
   const loose=bookmarks.filter(x=>!grouped.has(x.name)&&match(x));if(loose.length)html+=`<div class="bookmark-loose-label">未分组</div>${loose.map(row).join('')}`;
   $('bookmarkTree').innerHTML=html||'<div class="empty-state">没有匹配的书签</div>';
   document.querySelectorAll('[data-bookmark]').forEach(x=>x.addEventListener('click',()=>selectBookmark(x.dataset.bookmark)));
@@ -41,14 +41,14 @@ function renderBookmarkStatePanel(){
   const bookmark=currentBookmark();if(!bookmark){$('bookmarkStatePanel').innerHTML='';return}
   const page=state.data.pages?.find(x=>x.name===bookmark.activePage),visualMap=new Map((page?.visuals||[]).map(x=>[x.name,x]));
   const states=(bookmark.visualStates||[]).filter(x=>x.pageName===bookmark.activePage||!bookmark.activePage).sort((a,b)=>(a.isHidden===b.isHidden?0:a.isHidden?1:-1));
-  $('bookmarkStatePanel').innerHTML=`<div class="bookmark-state-title"><b>视觉对象状态</b><span>${states.length}</span></div><div class="bookmark-state-list">${states.length?states.map(item=>{const visual=visualMap.get(item.visualName),status=item.isHidden===true?'hidden':item.isHidden===false?'visible':'neutral';return `<button class="bookmark-state ${status}" data-bookmark-visual="${escapeHtml(item.visualName)}"><i></i><span><b>${escapeHtml(visual?.title||item.visualName)}</b><small>${escapeHtml(visualNames[visual?.type]||item.visualType||visual?.type||'视觉对象')}</small></span>${item.filterCount?`<em>${item.filterCount} 筛选</em>`:''}</button>`}).join(''):'<div class="empty-state">书签没有保存本页视觉对象状态</div>'}</div>`;
+  $('bookmarkStatePanel').innerHTML=`<div class="bookmark-state-title"><b>视觉对象状态</b><span>${states.length}</span></div><div class="bookmark-state-list">${states.length?states.map(item=>{const visual=visualMap.get(item.visualName),status=item.isHidden===true?'hidden':item.isHidden===false?'visible':'neutral';return `<button class="bookmark-state ${status}" ${visual?'':'disabled'} title="${visual?'定位到页面对象':'页面或对象已不存在，仅供审计'}" data-bookmark-visual="${escapeHtml(item.visualName)}"><i></i><span><b>${escapeHtml(visual?.title||item.visualName)}</b><small>${escapeHtml(visualNames[visual?.type]||item.visualType||visual?.type||'视觉对象')}</small></span>${item.filterCount?`<em>${item.filterCount} 筛选</em>`:''}</button>`}).join(''):'<div class="empty-state">书签没有保存本页视觉对象状态</div>'}</div>`;
   document.querySelectorAll('[data-bookmark-visual]').forEach(x=>x.addEventListener('click',()=>{openBookmarkInLayout(bookmark,x.dataset.bookmarkVisual)}));
 }
 
-function openBookmarkInLayout(bookmark,visualName=null){if(bookmark.activePage)state.selectedPage=bookmark.activePage;state.selectedBookmark=bookmark.name;state.selectedVisual=visualName;renderPageSelect();renderBookmarkSelect();switchView('layout');renderLayout()}
+function openBookmarkInLayout(bookmark,visualName=null){if(!bookmarkPage(bookmark)){toast('该书签引用的页面不存在，无法预览。',true);return}if(bookmark.activePage)state.selectedPage=bookmark.activePage;state.layoutBookmark=bookmark.name;state.selectedVisual=visualName||null;if(visualName){state.showHidden=true;$('toggleHidden').classList.add('active')}renderPageSelect();renderBookmarkSelect();switchView('layout');renderLayout()}
 
 function renderBookmarkSelect(){
   if(!state.data)return;const options=allBookmarks().filter(x=>!x.activePage||x.activePage===state.selectedPage);
-  $('bookmarkSelect').innerHTML=`<option value="">原始页面</option>${options.map(x=>`<option value="${escapeHtml(x.name)}" ${x.name===state.selectedBookmark?'selected':''}>${escapeHtml(x.displayName)}</option>`).join('')}`;
-  if(state.selectedBookmark&&!options.some(x=>x.name===state.selectedBookmark))state.selectedBookmark=null;
+  $('bookmarkSelect').innerHTML=`<option value="">原始页面</option>${options.map(x=>`<option value="${escapeHtml(x.name)}" ${x.name===state.layoutBookmark?'selected':''}>${escapeHtml(x.displayName)}</option>`).join('')}`;
+  if(state.layoutBookmark&&!options.some(x=>x.name===state.layoutBookmark))state.layoutBookmark=null;$('bookmarkSelect').value=state.layoutBookmark||'';
 }

@@ -39,10 +39,41 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!Uri.TryCreate(e.Source, UriKind.Absolute, out var source) || source.Scheme != Uri.UriSchemeHttp ||
-                !(source.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || IPAddress.TryParse(source.Host, out var address) && IPAddress.IsLoopback(address)))
+            if (!Uri.TryCreate(e.Source, UriKind.Absolute, out var source) ||
+                !Uri.TryCreate(_url, UriKind.Absolute, out var expected) || source.Scheme != expected.Scheme ||
+                source.Host != expected.Host || source.Port != expected.Port)
                 return;
             var message = JsonSerializer.Deserialize<DesktopMessage>(e.WebMessageAsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            if (message?.Type == "browse-project")
+            {
+                if (message.Target is not ("pathInput" or "compareBaseline" or "compareCurrent")) return;
+                string? path = null;
+                if (message.Kind == "file")
+                {
+                    var dialog = new Microsoft.Win32.OpenFileDialog { Title = "选择 Power BI 项目", Filter = "Power BI 项目 (*.pbip)|*.pbip", CheckFileExists = true };
+                    if (dialog.ShowDialog(this) == true) path = dialog.FileName;
+                }
+                else
+                {
+                    var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "选择 PBIP、Report 或 SemanticModel 目录", Multiselect = false };
+                    if (dialog.ShowDialog(this) == true) path = dialog.FolderName;
+                }
+                if (path is not null) Reply(new { type = "project-selected", target = message.Target, path });
+                return;
+            }
+            if (message?.Type == "get-recent-projects")
+            {
+                var paths = File.Exists(RecentProjectsFile) ? JsonSerializer.Deserialize<string[]>(File.ReadAllText(RecentProjectsFile)) ?? [] : [];
+                Reply(new { type = "recent-projects", paths = paths.Take(6) });
+                return;
+            }
+            if (message?.Type == "save-recent-projects")
+            {
+                var paths = (message.Paths ?? []).Where(path => !string.IsNullOrWhiteSpace(path) && path.Length < 4096).Distinct(StringComparer.OrdinalIgnoreCase).Take(6).ToArray();
+                Directory.CreateDirectory(Path.GetDirectoryName(RecentProjectsFile)!);
+                File.WriteAllText(RecentProjectsFile, JsonSerializer.Serialize(paths));
+                return;
+            }
             if (message?.Type != "apply-update" || string.IsNullOrWhiteSpace(message.PackagePath) || string.IsNullOrWhiteSpace(message.PackageSha256) ||
                 string.IsNullOrWhiteSpace(message.Mode) || string.IsNullOrWhiteSpace(message.TargetVersion)) return;
             var confirm = MessageBox.Show(
@@ -54,9 +85,13 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"无法启动更新：{ex.Message}", "PowerTools 更新", MessageBoxButton.OK, MessageBoxImage.Error);
+            Reply(new { type = "desktop-error", message = $"桌面操作失败：{ex.Message}" });
         }
     }
 
-    private sealed record DesktopMessage(string Type, string? PackagePath, string? PackageSha256, string? Mode, string? TargetVersion);
+    private static string RecentProjectsFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PowerTools", "recent-projects.json");
+
+    private void Reply(object message) => Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message));
+
+    private sealed record DesktopMessage(string Type, string? PackagePath, string? PackageSha256, string? Mode, string? TargetVersion, string? Target, string? Kind, string[]? Paths);
 }

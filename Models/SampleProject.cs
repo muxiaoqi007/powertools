@@ -116,6 +116,7 @@ public static class SampleProject
         var bookmarkGroups = new[] { new BookmarkGroup("sample-group", "演示书签", new[] { "sample-overview" }, 0) };
         var snapshot = new ProjectSnapshot("零售经营分析（示例）", "内置演示数据", "PBIP / PBIR", DateTimeOffset.Now, tables, relationships, calculationGroups, roles, dependencies, bookmarks, bookmarkGroups, new[] { overview, detail }, issues, Array.Empty<string>());
         var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
-        return snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        var optimized = snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        return optimized with { Usage = UsageAnalyzer.Analyze(optimized) };
     }
 }

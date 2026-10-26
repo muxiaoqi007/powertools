@@ -4,16 +4,18 @@ function bindUpdates(){
   $('updateModal').addEventListener('click',event=>{if(event.target===$('updateModal'))hideUpdateModal()});
 }
 
-function showUpdateModal(){ $('updateModal').hidden=false }
-function hideUpdateModal(){ $('updateModal').hidden=true }
+function showUpdateModal(){ showModal('updateModal','updateClose') }
+function hideUpdateModal(){ hideModal('updateModal') }
 
 async function checkForUpdates(refresh=false,showModal=false){
-  if(showModal){showUpdateModal();renderUpdateLoading('正在连接 GitHub Release…')}
+  let slowTimer;
+  if(showModal){showUpdateModal();renderUpdateLoading('正在连接 GitHub Release…');slowTimer=setTimeout(()=>{if(activeModal==='updateModal'&&$('updateContent').querySelector('.update-progress'))renderUpdateLoading('GitHub 响应较慢，正在尝试备用更新通道…')},8000)}
   try{
     const response=await fetch(`/api/v1/updates/check?refresh=${refresh?'true':'false'}`),body=await response.json();
     if(!response.ok)throw new Error(body.error||body.detail||'更新检查失败');
     state.updateInfo=body;renderUpdateButton();if(showModal||body.updateAvailable)renderUpdateDialog();
   }catch(error){if(showModal){$('updateContent').innerHTML=`<div class="empty-state"><b>无法检查更新</b>${escapeHtml(error.message)}</div>`;$('updateAction').textContent='重试';$('updateAction').disabled=false;$('updateAction').onclick=()=>checkForUpdates(true,true)}}
+  finally{clearTimeout(slowTimer)}
 }
 
 function renderUpdateButton(){const info=state.updateInfo,button=$('updateButton');button.classList.toggle('available',!!info?.updateAvailable);button.querySelector('span').textContent=info?.updateAvailable?`更新 ${info.latestVersion}`:'检查更新'}

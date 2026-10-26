@@ -38,7 +38,8 @@ public sealed class PowerBiProjectParser
             ReportFilterCount = reportFilterCount
         };
         var optimization = ModelOptimizationAnalyzer.Analyze(snapshot);
-        return snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        var optimized = snapshot with { RemovalCandidates = optimization.RemovalCandidates, OptimizationSuggestions = optimization.Suggestions };
+        return optimized with { Usage = UsageAnalyzer.Analyze(optimized) };
     }
 
     private static string? FindComponentRoot(string root, string suffix)

@@ -38,7 +38,16 @@ var startedAt = DateTimeOffset.UtcNow;
 app.UseResponseCompression();
 app.UseRateLimiter();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        // 静态资源不缓存，避免发版后浏览器/WebView 使用旧版 JS 导致交互异常
+        context.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+        context.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.Pragma] = "no-cache";
+        context.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.Expires] = "0";
+    }
+});
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live", version = "0.11.0", startedAt, uptimeSeconds = (long)(DateTimeOffset.UtcNow - startedAt).TotalSeconds }));
 app.MapGet("/health/ready", (ProjectSnapshotCache cache) => Results.Ok(new { status = "ready", version = "0.11.0", cache = cache.GetDiagnostics() }));
@@ -46,5 +55,13 @@ app.MapGet("/api/v1/diagnostics", (ProjectSnapshotCache cache, ProjectPathPolicy
 app.MapPowerToolsApi("/api");
 app.MapPowerToolsApi("/api/v1");
 
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        context.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+        context.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.Pragma] = "no-cache";
+        context.Context.Response.Headers[Microsoft.Net.Http.Headers.HeaderNames.Expires] = "0";
+    }
+});
 app.Run();

@@ -4,6 +4,10 @@ namespace PowerTools.Services;
 
 public sealed class ProjectSnapshotCache(PowerBiProjectParser parser)
 {
+    private static readonly HashSet<string> IgnoredDirectories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".git", ".vs", "bin", "obj", "node_modules", "artifacts", "publish", ".powertools"
+    };
     private readonly ConcurrentDictionary<string, Lazy<Task<CacheEntry>>> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, CacheEntry> _lastSuccessful = new(StringComparer.OrdinalIgnoreCase);
     private long _hitCount;
@@ -14,7 +18,7 @@ public sealed class ProjectSnapshotCache(PowerBiProjectParser parser)
 
     public async Task<ProjectSnapshot> GetAsync(string inputPath, bool refresh = false, CancellationToken cancellationToken = default)
     {
-        var key = Path.GetFullPath(Environment.ExpandEnvironmentVariables(inputPath.Trim().Trim('"')));
+        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Environment.ExpandEnvironmentVariables(inputPath.Trim().Trim('"'))));
         await WaitForStableFilesAsync(key, cancellationToken);
         var signature = GetProjectSignature(key);
         if (refresh) _cache.TryRemove(key, out _);
@@ -91,13 +95,38 @@ public sealed class ProjectSnapshotCache(PowerBiProjectParser parser)
     {
         if (!Directory.Exists(root)) return new ProjectSignature(0, DateTime.MinValue.Ticks);
         long count = 0, latestTicks = 0;
-        foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        foreach (var file in EnumerateProjectFiles(root))
         {
             count++;
             try { latestTicks = Math.Max(latestTicks, File.GetLastWriteTimeUtc(file).Ticks); }
             catch { }
         }
         return new ProjectSignature(count, latestTicks);
+    }
+
+    private static IEnumerable<string> EnumerateProjectFiles(string root)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            var directory = pending.Pop();
+            string[] files;
+            try { files = Directory.GetFiles(directory); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
+            foreach (var file in files) yield return file;
+
+            string[] subdirectories;
+            try { subdirectories = Directory.GetDirectories(directory); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
+            foreach (var subdirectory in subdirectories)
+            {
+                if (IgnoredDirectories.Contains(Path.GetFileName(subdirectory))) continue;
+                try { if ((File.GetAttributes(subdirectory) & FileAttributes.ReparsePoint) != 0) continue; }
+                catch { continue; }
+                pending.Push(subdirectory);
+            }
+        }
     }
 
     private sealed record CacheEntry(ProjectSnapshot Snapshot, DateTimeOffset CreatedAt, ProjectSignature Signature);
